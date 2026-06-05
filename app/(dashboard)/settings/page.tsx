@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { redirect } from "next/navigation";
 
 export default function SettingsPage() {
-  return <PlaceholderPage title="Clinic Settings" description="Philippines clinic profile, timezone, and local compliance fields will live here." />;
+  redirect("/settings/clinic");
 }

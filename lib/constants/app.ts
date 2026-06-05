@@ -15,3 +15,4 @@ export const CLINIC_TYPES = [
 ] as const;
 
 export const USER_ROLES = ["super_admin", "clinic_owner", "receptionist", "doctor", "staff"] as const;
+export const ASSIGNABLE_USER_ROLES = ["clinic_owner", "receptionist", "doctor", "staff"] as const;

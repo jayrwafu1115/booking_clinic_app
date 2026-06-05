@@ -51,7 +51,7 @@ const sections = [
   {
     label: "Settings",
     items: [
-      { href: "/settings", label: "Clinic Settings", icon: Settings },
+      { href: "/settings/clinic", label: "Clinic Settings", icon: Settings },
       { href: "/settings/users", label: "Users & Roles", icon: Users },
       { href: "/settings/notifications", label: "Notifications", icon: Sparkles },
       { href: "/settings/audit-logs", label: "Audit Logs", icon: ClipboardList }
