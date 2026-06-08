@@ -280,3 +280,34 @@ export type AppointmentNotification = {
   sent_at: string | null;
   created_at: string;
 };
+
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  price_monthly_centavos: number;
+  price_annual_centavos: number;
+  max_users: number;
+  max_doctors: number;
+  ai_enabled: boolean;
+  features: string[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClinicSubscriptionStatus = "trial" | "active" | "past_due" | "cancelled" | "suspended";
+
+export type ClinicSubscription = {
+  id: string;
+  clinic_id: string;
+  plan_id: string | null;
+  status: ClinicSubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  paymongo_subscription_id: string | null;
+  paymongo_customer_id: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};

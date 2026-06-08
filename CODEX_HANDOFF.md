@@ -3,172 +3,177 @@
 ## Project
 
 - Product: ClinicFlow AI PH
-- Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase, FullCalendar
+- Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase, FullCalendar, Recharts
 - Current branch: `main`
-- Current phase completed: Phase 7 - Philippines Localization + Resend Notifications
+- Current phase completed: **Final Phase — Production Hardening, Security, Performance, and Deployment Readiness**
 
-## Phase Completed
+## All Phases Completed
 
-Phase 7 implements Philippines-specific clinic localization, Resend transactional email notifications, per-clinic notification preferences, an SMS provider abstraction, and Philippines national holiday seeding for blocked dates.
+| Phase | Title |
+|-------|-------|
+| 1 | Foundation (clinics, profiles, auth, RLS) |
+| 2 | Settings & Users (clinic profile, user management, invites) |
+| 3 | Core Modules (patients, doctors, services, availability) |
+| 4 | Appointments (booking engine, calendar, FullCalendar) |
+| 5 | AI Booking Assistant (AI chat, widget, FAQ, tools) |
+| 7 | Philippines Localization & Resend Notifications |
+| 8 | Analytics, Reports & Super Admin |
+| 9 (Final) | Production Hardening, Security, Performance, Deployment Readiness |
 
-## Features Implemented
+## Final Phase Features Implemented
 
-### Philippines Clinic Localization
-- All Philippines-specific clinic fields already existed from Phase 2/4:
-  - Clinic name, PRC number, PTR number, TIN, PhilHealth accreditation
-  - Address line 1/2, Barangay, City/Municipality, Province, Region, Postal code
-  - Contact number, Email
-  - Default timezone locked to `Asia/Manila`, currency to `PHP`
-- Phase 7 confirms these remain complete and tenant-isolated via `clinic_id`
+### PayMongo Webhook (`/api/paymongo/webhook`)
+- HMAC-SHA256 signature verification via `Paymongo-Signature` header
+- Handles `payment.paid`, `payment.failed`, `link.payment.paid`, `checkout_session.*`
+- Updates `clinic_subscriptions.status` to `active`/`past_due`
+- Writes audit logs via admin client (webhook has no user session)
 
-### Resend Email Notifications
-- `lib/notifications/resend.ts` — thin Resend SDK wrapper; server-only
-- `lib/notifications/templates/index.ts` — clean HTML email templates for:
-  - `booking_confirmation` — sent immediately when appointment is created
-  - `appointment_confirmed` — sent when clinic marks appointment confirmed
-  - `appointment_rescheduled` — sent after reschedule
-  - `appointment_cancelled` — sent on cancellation, includes reason
-  - `appointment_reminder` — reminder template (sending requires cron)
-- `lib/notifications/send-appointment-email.ts`:
-  - `sendAppointmentEmail()` — takes pre-loaded data, respects notification preferences, records in `appointment_notifications`
-  - `sendAppointmentEmailById()` — convenience wrapper that fetches appointment+clinic+settings from DB, fire-and-forget (never throws)
-- Emails are wired into:
-  - `server/actions/appointments.ts` — create (booking_confirmation), reschedule (appointment_rescheduled), status confirmed/cancelled
-  - `server/widget/chat.ts` — widget confirm_booking flow
+### AI Handoff Audit Log
+- `handoffConversationAction` now logs `ai.handoff_requested` with `reason` metadata
 
-### Notification Preferences
-- New `clinic_settings` columns:
-  - `notify_booking_confirmation` (default true)
-  - `notify_appointment_confirmed` (default true)
-  - `notify_appointment_rescheduled` (default true)
-  - `notify_appointment_cancelled` (default true)
-  - `notify_appointment_reminder` (default false)
-  - `reminder_hours_before` (default 24, range 1–168)
-  - `sms_enabled` (default false)
-  - `sms_provider` (nullable: semaphore | twilio | infobip)
-- `updateNotificationPreferencesAction` in `server/actions/settings.ts`
-- Full settings UI at `/settings/notifications`
-- Toggle switches for all email and SMS preference toggles
-- Reminder timing input
-- SMS provider selector
+### Performance Indexes (migration `202606090008`)
+- `appointments`: `(clinic_id, start_at)`, `(clinic_id, status)`, `(clinic_id, patient_id)`, `(clinic_id, doctor_id)`
+- `patients`: `(clinic_id, lower(full_name))`, `(clinic_id, phone)`
+- `ai_conversations`: `(clinic_id, status)`, `(clinic_id, created_at)`
+- `ai_messages`: `(conversation_id, created_at)`
+- `appointment_notifications`, `audit_logs`, `clinic_subscriptions`: targeted indexes
+- Schema guards for `profiles.status`, `profiles.deactivated_at/by`
 
-### SMS Placeholder
-- `lib/notifications/sms/types.ts` — `SmsProvider`, `SmsNotificationParams`, `SmsSendResult`, `SmsProviderClient` types
-- `lib/notifications/sms/index.ts` — `sendSmsNotification()` stub with TODO comments for Semaphore (PH), Twilio, Infobip
-- Env var references documented in `.env.example`
+### README.md
+Complete deployment guide covering Supabase setup, env vars, Resend, PayMongo, AI providers, Vercel deployment.
 
-### Philippines Holidays
-- `lib/constants/ph-holidays.ts` — static list of national and special holidays for 2025 and 2026
-  - `PhHoliday`, `PhHolidayType` types
-  - `getPhHolidays(year)` helper
-  - `SUPPORTED_HOLIDAY_YEARS` constant
-- `server/actions/notifications.ts` — `seedPhilippinesHolidaysAction`:
-  - Inserts holidays as `blocked_dates` with `is_holiday = true`
-  - Deduplicates by date (skips already-imported entries)
-  - Audited via `audit_logs`
-- UI import button in the Notifications settings page
+### PRODUCTION_CHECKLIST.md
+12-section production checklist: env vars, RLS, webhooks, email domain, AI, Vercel, security, DB, backups, monitoring.
 
-### Appointment Notifications Table
-- `appointment_notifications` tracks every email/SMS send attempt
-  - Fields: clinic_id, appointment_id, channel, notification_type, recipient, status (pending/sent/failed), error, metadata, sent_at
-  - RLS: super admins manage all; clinic users can select own
-- `appointment_notifications` updated with message_id on successful send
+## Complete Feature List
 
-### Appointment Tracking Fields
-- `appointments.confirmation_token` — unique UUID set automatically on insert (for future patient confirmation pages)
-- `appointments.patient_notified_at` — stamped when first `booking_confirmation` email is sent successfully
+### Clinic Dashboard
+- Multi-tenant authentication and session management
+- Role-based permissions: `super_admin`, `clinic_owner`, `receptionist`, `doctor`, `staff`
+- Clinic profile and settings management
+- User invitation, role management, deactivation
+- Audit log trail (read-only for clinic users)
+- Notification preferences (email)
 
-### Blocked Dates Enhancement
-- `blocked_dates.is_holiday` — boolean flag, default false
+### Appointments
+- Booking engine with availability rules (per-doctor or clinic-wide)
+- Blocked dates and holiday support
+- Conflict detection (doctor schedule, blocked dates, break times)
+- Status machine: `booked → confirmed → completed | cancelled | no_show`
+- Email notifications: booking confirmation, confirmed, rescheduled, cancelled
 
-## Files Changed
+### Calendar
+- FullCalendar with day, week, list views
+- Manila timezone awareness
+- Colour-coded appointment status
 
+### Patients
+- Full Philippine address fields (barangay, city, province, region, postal code)
+- Emergency contact
+- Patient appointment history
+
+### Services & Doctors
+- Service categories, pricing (PHP), duration, online booking toggle
+- Doctor profiles with specialization, license, availability override
+
+### AI Booking Assistant
+- Internal AI chat (dashboard) using OpenAI or Ollama
+- FAQ matching with keyword scoring
+- Service search and slot suggestion
+- Emergency intent detection with safety redirect
+- AI handoff to staff with audit log
+- Embeddable public widget at `/widget/[clinicSlug]`
+- Widget API at `/api/widget/[clinicSlug]/chat` with rate limiting (30 req/min/IP)
+
+### Reports
+- Date range filter (Today, This Week, This Month, Last Month, Custom)
+- Appointment KPIs: total, completed, cancelled, no-shows
+- Business KPIs: revenue (PHP), new patients, AI bookings
+- Charts: appointment status pie, booking source pie, services bar, doctor utilization bar
+- Service and doctor performance tables
+- AI analytics: conversations, bookings, handoffs, conversion rate, top sources
+
+### Super Admin (`/admin`)
+- Platform dashboard: clinic, subscription, user, AI metrics
+- Clinic list with status/subscription info
+- Clinic detail with status toggle (active/inactive/suspended)
+- User list (all platform users)
+- Subscription breakdown per clinic
+- Per-clinic AI usage stats
+- Platform rankings (top clinics by appointments and AI usage)
+
+### Billing (infrastructure)
+- `subscription_plans` table (Starter, Pro, Enterprise)
+- `clinic_subscriptions` table with auto-trial trigger
+- PayMongo webhook handler for payment events
+- Front-end checkout not yet built (billing page is a placeholder)
+
+### Notifications
+- Resend email for booking confirmation, confirmed, rescheduled, cancelled
+- Philippines holiday calendar (pre-loaded in `lib/constants/ph-holidays.ts`)
+- Notification preferences stored per clinic
+
+## Files Changed in Final Phase
+
+- `server/actions/ai.ts`
+- `app/api/paymongo/webhook/route.ts` (new)
+- `supabase/migrations/202606090008_phase_9_production_hardening.sql` (new)
+- `README.md` (new)
+- `PRODUCTION_CHECKLIST.md` (new)
+- `CLAUDE_HANDOFF.md`
 - `CODEX_HANDOFF.md`
-- `.env.example`
-- `package.json` (added `resend`)
-- `types/database.ts`
-- `lib/validations/settings.ts`
-- `lib/constants/ph-holidays.ts` (new)
-- `lib/notifications/resend.ts` (new)
-- `lib/notifications/templates/index.ts` (new)
-- `lib/notifications/send-appointment-email.ts` (new)
-- `lib/notifications/sms/types.ts` (new)
-- `lib/notifications/sms/index.ts` (new)
-- `server/actions/settings.ts`
-- `server/actions/appointments.ts`
-- `server/actions/notifications.ts` (new)
-- `server/queries/settings.ts`
-- `server/widget/chat.ts`
-- `components/settings/notification-preferences-form.tsx` (new)
-- `app/(dashboard)/settings/notifications/page.tsx`
 
-## Supabase Migrations Added
+## Supabase Migrations (all phases)
 
-- `supabase/migrations/202606090006_phase_7_notifications.sql`
-  - Adds 8 notification preference columns to `clinic_settings`
-  - Adds `confirmation_token`, `patient_notified_at` to `appointments`
-  - Adds `is_holiday` to `blocked_dates`
-  - Creates `appointment_notifications` table with RLS
-
-## Environment Variables Added
-
-New in `.env.example` (SMS providers — not yet active):
 ```
-SEMAPHORE_API_KEY=
-SEMAPHORE_SENDER_NAME=
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_FROM_PHONE=
-INFOBIP_BASE_URL=
-INFOBIP_API_KEY=
-INFOBIP_SENDER=
-```
-
-Existing variables used by Phase 7 (already in `.env.example`):
-```
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=
-NEXT_PUBLIC_APP_URL=
+202606050001_phase_1_foundation.sql
+202606050002_phase_2_settings_users.sql
+202606050003_phase_3_core_modules.sql
+202606080004_phase_4_appointments.sql
+202606080005_phase_5_ai_booking_assistant.sql
+202606090006_phase_7_notifications.sql
+202606090007_phase_8_reports_admin.sql
+202606090008_phase_9_production_hardening.sql
 ```
 
 ## Commands Run
 
 ```bash
-npm install resend
 npm run lint       # ✔ No ESLint warnings or errors
 npm run typecheck  # ✔ No TypeScript errors
+npm run build      # ✔ Build successful (49 routes)
 ```
 
 ## Known Issues
 
-- **Appointment reminders require a scheduler.** The `notify_appointment_reminder` flag and `reminder_hours_before` preference are stored and respected by `sendAppointmentEmail()`, but no cron job is wired yet. Set up Supabase `pg_cron`, Vercel Cron, or a queue job that calls `sendAppointmentEmailById(id, "appointment_reminder")` for appointments due within `reminder_hours_before` hours.
-- **SMS not yet implemented.** `sendSmsNotification()` is a no-op stub. Implement a concrete Semaphore/Twilio/Infobip client in `lib/notifications/sms/` when an SMS contract is in place.
-- **Confirmation token page not built.** `appointments.confirmation_token` is generated and included in email links as `/confirm/{token}`, but the public patient page at `app/confirm/[token]/page.tsx` is not yet implemented. The URL appears in emails but leads to a 404 until Phase 8.
-- **PH holiday dates for Islamic holidays (Eid)** use estimated dates. Confirm official proclamation dates each year and update `lib/constants/ph-holidays.ts`.
-- **Rate limiter still in-memory.** Inherited from Phase 6. Move to Redis/Upstash for multi-instance production.
-- **No automated test framework.** `npm test` is not configured.
+- **Patient confirmation portal** — `/confirm/[token]` not built. Emails link to it → 404.
+- **SMS not implemented** — Stub only. Wire Semaphore/Twilio/Infobip in `lib/notifications/sms/`.
+- **Appointment reminder cron** — Preference stored but no scheduler fires it.
+- **Rate limiter is in-memory** — Resets per serverless instance. Upgrade to Upstash Redis.
+- **AI usage query** — `getAiUsageByClinic()` loads all message rows for per-clinic counts. Convert to aggregate RPC.
+- **Mobile admin sidebar** — No drawer on small screens for `/admin`.
+- **PayMongo checkout** — Webhook ready; front-end checkout initiation (create session, redirect) not built.
 
-## Next Recommended Phase Prompt
+## Deployment Steps
 
-Phase 8 should implement the patient-facing confirmation portal and billing:
+1. Run all 8 migrations against Supabase (SQL Editor or `supabase db push`)
+2. Set all env vars in Vercel (see README.md)
+3. Register PayMongo webhook at `https://yourapp.com/api/paymongo/webhook`
+4. Configure Supabase Auth redirect URLs for your domain
+5. Verify Resend domain DNS
+6. Create first super admin via SQL
+7. Deploy — Vercel auto-deploys from `main`
+8. Work through PRODUCTION_CHECKLIST.md
 
-```txt
-Continue from Phase 7. Implement the patient-facing appointment confirmation portal and PayMongo billing.
+## Security Status
 
-Patient portal:
-- Public page at /confirm/[token] showing appointment details (no login required)
-- Cancel appointment action via secure token
-- Request-reschedule action (creates a note for staff)
-- Audit log for patient-driven changes (actor_id = null, source = patient_portal)
-
-PayMongo billing:
-- Subscription plans page at /billing
-- PayMongo checkout for clinic subscriptions (monthly/annual in PHP)
-- GCash and credit card payment support
-- Webhook handler for payment events
-- Clinic status gating (active/trial/suspended) based on subscription
-- Free trial countdown visible in the dashboard
-
-Keep all data tenant-scoped. Preserve existing Phase 7 notification and widget flows.
-Run lint, typecheck, and update CODEX_HANDOFF.md.
-```
+| Control | Status |
+|---------|--------|
+| Supabase RLS on all tables | ✅ |
+| Server-only secrets (no `NEXT_PUBLIC_` leak) | ✅ |
+| PayMongo webhook HMAC-SHA256 verification | ✅ |
+| Server action auth guards (`requireUser` + `assertPermission`) | ✅ |
+| Admin section role enforcement | ✅ |
+| Admin client server-side only | ✅ |
+| Audit logs on all major actions | ✅ |
+| Rate limiting on public endpoints | ✅ (in-memory — upgrade for prod) |

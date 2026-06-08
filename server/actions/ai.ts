@@ -17,6 +17,7 @@ import {
   handoffConversationSchema,
   sendAiMessageSchema
 } from "@/lib/validations/settings";
+import { createAuditLog } from "@/server/audit/create-audit-log";
 import type { AiMessage, ClinicSettings } from "@/types/database";
 
 type AiActionState = {
@@ -345,8 +346,18 @@ export async function handoffConversationAction(_: AiActionState, formData: Form
       return { message: parsed.error.errors[0]?.message ?? "Enter a handoff reason." };
     }
 
-    await getAiActionContext(false);
+    const { user, clinicId } = await getAiActionContext(false);
     await handoffToStaff(parsed.data.conversationId, parsed.data.reason);
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "ai.handoff_requested",
+      entityType: "ai_conversation",
+      entityId: parsed.data.conversationId,
+      metadata: { reason: parsed.data.reason }
+    });
+
     revalidatePath(`/ai/conversations/${parsed.data.conversationId}`);
     revalidatePath("/ai/conversations");
     return { success: true, message: "Conversation handed off to staff." };
