@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile, requireUser } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { ACTIVE_APPOINTMENT_STATUSES, STATUS_TRANSITIONS } from "@/lib/constants/appointments";
+import { sendAppointmentEmailById } from "@/lib/notifications/send-appointment-email";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { addMinutesIso, getManilaParts, parseAppointmentStart } from "@/lib/utils/manila-time";
 import { appointmentRescheduleSchema, appointmentSchema, appointmentStatusSchema } from "@/lib/validations/core";
@@ -293,6 +294,8 @@ export async function createAppointmentAction(_: AppointmentActionState, formDat
       metadata: { patient: slot.patient.full_name, service: slot.service.name, start_at: slot.startAt }
     });
 
+    await sendAppointmentEmailById(data.id, "booking_confirmation");
+
     revalidatePath("/appointments");
     revalidatePath("/calendar");
     revalidatePath("/dashboard");
@@ -409,6 +412,8 @@ export async function rescheduleAppointmentAction(_: AppointmentActionState, for
       metadata: { start_at: slot.startAt, end_at: slot.endAt }
     });
 
+    await sendAppointmentEmailById(appointment.id, "appointment_rescheduled");
+
     revalidatePath("/appointments");
     revalidatePath("/calendar");
     revalidatePath("/dashboard");
@@ -468,6 +473,14 @@ export async function updateAppointmentStatusAction(_: AppointmentActionState, f
       entityId: appointment.id,
       metadata: { previous_status: appointment.status, next_status: nextStatus }
     });
+
+    if (nextStatus === "confirmed") {
+      await sendAppointmentEmailById(appointment.id, "appointment_confirmed");
+    } else if (nextStatus === "cancelled") {
+      await sendAppointmentEmailById(appointment.id, "appointment_cancelled", {
+        cancellationReason: parsed.data.cancellationReason ?? null
+      });
+    }
 
     revalidatePath("/appointments");
     revalidatePath(`/appointments/${appointment.id}`);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AI_PROVIDERS, AI_TONES } from "@/lib/constants/ai";
 import { ASSIGNABLE_USER_ROLES, CLINIC_TYPES, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
+import { SUPPORTED_HOLIDAY_YEARS } from "@/lib/constants/ph-holidays";
 
 const optionalText = z.string().trim().optional().transform((value) => value || null);
 
@@ -80,4 +81,29 @@ export const sendAiMessageSchema = z.object({
 export const handoffConversationSchema = z.object({
   conversationId: z.string().uuid(),
   reason: z.string().trim().min(3).max(500)
+});
+
+export const SMS_PROVIDERS = ["semaphore", "twilio", "infobip"] as const;
+
+export const notificationPreferencesSchema = z.object({
+  notifyBookingConfirmation: z.enum(["on"]).optional().transform((v) => v === "on"),
+  notifyAppointmentConfirmed: z.enum(["on"]).optional().transform((v) => v === "on"),
+  notifyAppointmentRescheduled: z.enum(["on"]).optional().transform((v) => v === "on"),
+  notifyAppointmentCancelled: z.enum(["on"]).optional().transform((v) => v === "on"),
+  notifyAppointmentReminder: z.enum(["on"]).optional().transform((v) => v === "on"),
+  reminderHoursBefore: z.coerce.number().int().min(1).max(168).default(24),
+  smsEnabled: z.enum(["on"]).optional().transform((v) => v === "on"),
+  smsProvider: z
+    .enum(SMS_PROVIDERS)
+    .optional()
+    .transform((v) => v ?? null)
+});
+
+export const seedPhHolidaysSchema = z.object({
+  year: z.coerce
+    .number()
+    .int()
+    .refine((v): v is (typeof SUPPORTED_HOLIDAY_YEARS)[number] => (SUPPORTED_HOLIDAY_YEARS as readonly number[]).includes(v), {
+      message: `Year must be one of: ${SUPPORTED_HOLIDAY_YEARS.join(", ")}`
+    })
 });

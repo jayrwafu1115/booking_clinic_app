@@ -3,6 +3,12 @@ import { canManageClinicSettings, canManageUsers, profileHasPermission } from "@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AuditLog, Clinic, ClinicSettings, Profile, UserInvite } from "@/types/database";
 
+export type NotificationSettingsData = {
+  profile: Profile;
+  settings: ClinicSettings | null;
+  canEdit: boolean;
+};
+
 export type ClinicSettingsData = {
   profile: Profile;
   clinic: Clinic;
@@ -43,6 +49,32 @@ export async function getClinicSettingsData(): Promise<ClinicSettingsData | null
     profile,
     clinic: clinicResult.data,
     settings: settingsResult.data,
+    canEdit: canManageClinicSettings(profile)
+  };
+}
+
+export async function getNotificationSettingsData(): Promise<NotificationSettingsData | null> {
+  const user = await getCurrentUser();
+  const profile = await getCurrentProfile();
+
+  if (!user || !profile?.clinic_id) {
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("clinic_settings")
+    .select("*")
+    .eq("clinic_id", profile.clinic_id)
+    .maybeSingle<ClinicSettings>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    profile,
+    settings: data,
     canEdit: canManageClinicSettings(profile)
   };
 }

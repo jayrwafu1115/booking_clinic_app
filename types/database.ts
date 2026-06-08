@@ -39,6 +39,8 @@ export type Profile = {
   updated_at: string;
 };
 
+export type SmsProviderOption = "semaphore" | "twilio" | "infobip";
+
 export type ClinicSettings = {
   id: string;
   clinic_id: string;
@@ -57,6 +59,14 @@ export type ClinicSettings = {
   ai_booking_instructions: string | null;
   ai_enabled: boolean;
   ai_widget_enabled: boolean;
+  notify_booking_confirmation: boolean;
+  notify_appointment_confirmed: boolean;
+  notify_appointment_rescheduled: boolean;
+  notify_appointment_cancelled: boolean;
+  notify_appointment_reminder: boolean;
+  reminder_hours_before: number;
+  sms_enabled: boolean;
+  sms_provider: SmsProviderOption | null;
   created_at: string;
   updated_at: string;
 };
@@ -164,6 +174,7 @@ export type BlockedDate = {
   start_at: string;
   end_at: string;
   all_day: boolean;
+  is_holiday: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -191,6 +202,8 @@ export type Appointment = {
   end_at: string;
   notes: string | null;
   cancellation_reason: string | null;
+  confirmation_token: string | null;
+  patient_notified_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -243,4 +256,27 @@ export type AiMessage = {
 export type AiConversationWithMessages = AiConversation & {
   patients: Pick<Patient, "id" | "full_name" | "phone" | "email"> | null;
   ai_messages: AiMessage[];
+};
+
+export type AppointmentNotificationChannel = "email" | "sms";
+export type AppointmentNotificationType =
+  | "booking_confirmation"
+  | "appointment_confirmed"
+  | "appointment_rescheduled"
+  | "appointment_cancelled"
+  | "appointment_reminder";
+export type AppointmentNotificationStatus = "pending" | "sent" | "failed";
+
+export type AppointmentNotification = {
+  id: string;
+  clinic_id: string;
+  appointment_id: string;
+  channel: AppointmentNotificationChannel;
+  notification_type: AppointmentNotificationType;
+  recipient: string;
+  status: AppointmentNotificationStatus;
+  error: string | null;
+  metadata: Record<string, unknown>;
+  sent_at: string | null;
+  created_at: string;
 };

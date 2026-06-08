@@ -3,6 +3,7 @@ import { buildBookingSystemPrompt } from "@/lib/ai/prompts";
 import { getAiProvider } from "@/lib/ai/provider";
 import { DEFAULT_AI_WELCOME_MESSAGE } from "@/lib/constants/ai";
 import { ACTIVE_APPOINTMENT_STATUSES } from "@/lib/constants/appointments";
+import { sendAppointmentEmailById } from "@/lib/notifications/send-appointment-email";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { addMinutesIso, getManilaParts, manilaLocalToUtcIso } from "@/lib/utils/manila-time";
 import type {
@@ -885,6 +886,10 @@ export async function handleWidgetChat(
     }
   );
   const { appointment, patient, slot } = await createWidgetAppointment(supabase, config, conversationForBooking, request);
+
+  // Send booking confirmation email (non-blocking; patient email is optional)
+  await sendAppointmentEmailById(appointment.id, "booking_confirmation");
+
   const assistantMessage = await insertWidgetMessage(
     supabase,
     conversationForBooking.id,

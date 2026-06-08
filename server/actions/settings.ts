@@ -6,7 +6,7 @@ import { getCurrentProfile, requireUser } from "@/lib/auth/session";
 import { assertPermission, isAssignableRole } from "@/lib/auth/permissions";
 import { DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { clinicProfileSchema, deactivateUserSchema, inviteUserSchema, updateUserRoleSchema } from "@/lib/validations/settings";
+import { clinicProfileSchema, deactivateUserSchema, inviteUserSchema, notificationPreferencesSchema, updateUserRoleSchema } from "@/lib/validations/settings";
 import { createAuditLog } from "@/server/audit/create-audit-log";
 import type { Profile } from "@/types/database";
 
@@ -224,6 +224,56 @@ export async function updateUserRoleAction(_: SettingsActionState, formData: For
     revalidatePath("/settings/users");
     revalidatePath("/settings/audit-logs");
     return { success: true, message: "User role updated." };
+  } catch (error) {
+    return toState(error);
+  }
+}
+
+export async function updateNotificationPreferencesAction(_: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
+  try {
+    const parsed = notificationPreferencesSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) {
+      return { message: parsed.error.errors[0]?.message ?? "Please review the notification settings." };
+    }
+
+    const { user, clinicId } = await getClinicSettingsOwnerContext();
+    const supabase = await createSupabaseServerClient();
+
+    const { error } = await supabase.from("clinic_settings").upsert(
+      {
+        clinic_id: clinicId,
+        notify_booking_confirmation: parsed.data.notifyBookingConfirmation,
+        notify_appointment_confirmed: parsed.data.notifyAppointmentConfirmed,
+        notify_appointment_rescheduled: parsed.data.notifyAppointmentRescheduled,
+        notify_appointment_cancelled: parsed.data.notifyAppointmentCancelled,
+        notify_appointment_reminder: parsed.data.notifyAppointmentReminder,
+        reminder_hours_before: parsed.data.reminderHoursBefore,
+        sms_enabled: parsed.data.smsEnabled,
+        sms_provider: parsed.data.smsProvider
+      },
+      { onConflict: "clinic_id" }
+    );
+
+    if (error) {
+      return { message: error.message };
+    }
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "clinic_settings.notifications_updated",
+      entityType: "clinic_settings",
+      entityId: clinicId,
+      metadata: {
+        notify_booking_confirmation: parsed.data.notifyBookingConfirmation,
+        notify_appointment_reminder: parsed.data.notifyAppointmentReminder,
+        sms_enabled: parsed.data.smsEnabled
+      }
+    });
+
+    revalidatePath("/settings/notifications");
+    revalidatePath("/settings/audit-logs");
+    return { success: true, message: "Notification preferences updated." };
   } catch (error) {
     return toState(error);
   }

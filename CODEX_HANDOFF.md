@@ -5,158 +5,170 @@
 - Product: ClinicFlow AI PH
 - Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase, FullCalendar
 - Current branch: `main`
-- Current phase completed: Phase 6 - Embeddable AI Booking Widget
+- Current phase completed: Phase 7 - Philippines Localization + Resend Notifications
 
 ## Phase Completed
 
-Phase 6 builds the public embeddable AI booking widget on top of the Phase 5 AI assistant and Phase 4 appointment engine.
+Phase 7 implements Philippines-specific clinic localization, Resend transactional email notifications, per-clinic notification preferences, an SMS provider abstraction, and Philippines national holiday seeding for blocked dates.
 
 ## Features Implemented
 
-- Public widget route at `/widget/[clinicSlug]`
-- Public widget chat endpoint at `/api/widget/[clinicSlug]/chat`
-- Server-only clinic slug resolution with active-clinic checks
-- Clinic branding in the widget:
-  - Clinic name
-  - Clinic logo
-  - Clinic primary color
-- Clinic AI settings support:
-  - AI enabled
-  - Widget enabled
-  - Provider/model/tone/welcome message/instructions
-- Floating button mode
-- Expanded responsive chat panel
-- Message bubbles
-- Typing indicator
-- Smooth open/close and hover transitions
-- Quick reply buttons for online-booking-enabled services
-- FAQ-first answer path before LLM fallback
-- Emergency safety response rule
-- Public booking conversation storage in `ai_conversations`
-- Public message storage in `ai_messages`
-- Explicit booking flow:
-  - Select service
-  - Suggest available slots
-  - Select slot
-  - Collect patient full name and phone
-  - Ask for optional email
-  - Confirm booking
-  - Create or reuse patient by phone
-  - Create appointment with `source = 'widget'`
-- Public endpoint rate limiting by IP and clinic slug
-- Dashboard embed page at `/ai/widget`
-- Copyable widget URL, iframe snippet, and JavaScript snippet
+### Philippines Clinic Localization
+- All Philippines-specific clinic fields already existed from Phase 2/4:
+  - Clinic name, PRC number, PTR number, TIN, PhilHealth accreditation
+  - Address line 1/2, Barangay, City/Municipality, Province, Region, Postal code
+  - Contact number, Email
+  - Default timezone locked to `Asia/Manila`, currency to `PHP`
+- Phase 7 confirms these remain complete and tenant-isolated via `clinic_id`
+
+### Resend Email Notifications
+- `lib/notifications/resend.ts` — thin Resend SDK wrapper; server-only
+- `lib/notifications/templates/index.ts` — clean HTML email templates for:
+  - `booking_confirmation` — sent immediately when appointment is created
+  - `appointment_confirmed` — sent when clinic marks appointment confirmed
+  - `appointment_rescheduled` — sent after reschedule
+  - `appointment_cancelled` — sent on cancellation, includes reason
+  - `appointment_reminder` — reminder template (sending requires cron)
+- `lib/notifications/send-appointment-email.ts`:
+  - `sendAppointmentEmail()` — takes pre-loaded data, respects notification preferences, records in `appointment_notifications`
+  - `sendAppointmentEmailById()` — convenience wrapper that fetches appointment+clinic+settings from DB, fire-and-forget (never throws)
+- Emails are wired into:
+  - `server/actions/appointments.ts` — create (booking_confirmation), reschedule (appointment_rescheduled), status confirmed/cancelled
+  - `server/widget/chat.ts` — widget confirm_booking flow
+
+### Notification Preferences
+- New `clinic_settings` columns:
+  - `notify_booking_confirmation` (default true)
+  - `notify_appointment_confirmed` (default true)
+  - `notify_appointment_rescheduled` (default true)
+  - `notify_appointment_cancelled` (default true)
+  - `notify_appointment_reminder` (default false)
+  - `reminder_hours_before` (default 24, range 1–168)
+  - `sms_enabled` (default false)
+  - `sms_provider` (nullable: semaphore | twilio | infobip)
+- `updateNotificationPreferencesAction` in `server/actions/settings.ts`
+- Full settings UI at `/settings/notifications`
+- Toggle switches for all email and SMS preference toggles
+- Reminder timing input
+- SMS provider selector
+
+### SMS Placeholder
+- `lib/notifications/sms/types.ts` — `SmsProvider`, `SmsNotificationParams`, `SmsSendResult`, `SmsProviderClient` types
+- `lib/notifications/sms/index.ts` — `sendSmsNotification()` stub with TODO comments for Semaphore (PH), Twilio, Infobip
+- Env var references documented in `.env.example`
+
+### Philippines Holidays
+- `lib/constants/ph-holidays.ts` — static list of national and special holidays for 2025 and 2026
+  - `PhHoliday`, `PhHolidayType` types
+  - `getPhHolidays(year)` helper
+  - `SUPPORTED_HOLIDAY_YEARS` constant
+- `server/actions/notifications.ts` — `seedPhilippinesHolidaysAction`:
+  - Inserts holidays as `blocked_dates` with `is_holiday = true`
+  - Deduplicates by date (skips already-imported entries)
+  - Audited via `audit_logs`
+- UI import button in the Notifications settings page
+
+### Appointment Notifications Table
+- `appointment_notifications` tracks every email/SMS send attempt
+  - Fields: clinic_id, appointment_id, channel, notification_type, recipient, status (pending/sent/failed), error, metadata, sent_at
+  - RLS: super admins manage all; clinic users can select own
+- `appointment_notifications` updated with message_id on successful send
+
+### Appointment Tracking Fields
+- `appointments.confirmation_token` — unique UUID set automatically on insert (for future patient confirmation pages)
+- `appointments.patient_notified_at` — stamped when first `booking_confirmation` email is sent successfully
+
+### Blocked Dates Enhancement
+- `blocked_dates.is_holiday` — boolean flag, default false
 
 ## Files Changed
 
 - `CODEX_HANDOFF.md`
-- `app/(dashboard)/ai/page.tsx`
-- `app/(dashboard)/ai/settings/page.tsx`
-- `app/(dashboard)/ai/faq/page.tsx`
-- `app/(dashboard)/ai/conversations/page.tsx`
-- `app/(dashboard)/ai/conversations/[id]/page.tsx`
-- `app/(dashboard)/ai/conversations/loading.tsx`
-- `app/(dashboard)/ai/widget/page.tsx`
-- `app/api/widget/[clinicSlug]/chat/route.ts`
-- `app/widget/[clinicSlug]/page.tsx`
-- `components/ai/ai-settings-form.tsx`
-- `components/ai/conversation-message-form.tsx`
-- `components/ai/faq-item-form.tsx`
-- `components/ai/handoff-form.tsx`
-- `components/ai/new-conversation-form.tsx`
-- `components/ai/widget-embed-card.tsx`
-- `components/layout/sidebar.tsx`
-- `components/widget/booking-widget.tsx`
-- `lib/ai/provider.ts`
-- `lib/ai/openai-provider.ts`
-- `lib/ai/ollama-provider.ts`
-- `lib/ai/prompts.ts`
-- `lib/ai/tools.ts`
-- `lib/auth/permissions.ts`
-- `lib/constants/ai.ts`
-- `lib/rate-limit.ts`
-- `lib/validations/settings.ts`
-- `server/actions/ai.ts`
-- `server/queries/ai.ts`
-- `server/widget/chat.ts`
+- `.env.example`
+- `package.json` (added `resend`)
 - `types/database.ts`
+- `lib/validations/settings.ts`
+- `lib/constants/ph-holidays.ts` (new)
+- `lib/notifications/resend.ts` (new)
+- `lib/notifications/templates/index.ts` (new)
+- `lib/notifications/send-appointment-email.ts` (new)
+- `lib/notifications/sms/types.ts` (new)
+- `lib/notifications/sms/index.ts` (new)
+- `server/actions/settings.ts`
+- `server/actions/appointments.ts`
+- `server/actions/notifications.ts` (new)
+- `server/queries/settings.ts`
+- `server/widget/chat.ts`
+- `components/settings/notification-preferences-form.tsx` (new)
+- `app/(dashboard)/settings/notifications/page.tsx`
 
-## Supabase Tables/Migrations Added
+## Supabase Migrations Added
 
-- Phase 6 adds no new Supabase migration.
-- Phase 6 uses the Phase 5 migration:
-  - `supabase/migrations/202606080005_phase_5_ai_booking_assistant.sql`
-- The widget relies on these existing tables:
-  - `clinics`
-  - `clinic_settings`
-  - `services`
-  - `doctors`
-  - `availability_rules`
-  - `blocked_dates`
-  - `patients`
-  - `appointments`
-  - `faq_items`
-  - `ai_conversations`
-  - `ai_messages`
+- `supabase/migrations/202606090006_phase_7_notifications.sql`
+  - Adds 8 notification preference columns to `clinic_settings`
+  - Adds `confirmation_token`, `patient_notified_at` to `appointments`
+  - Adds `is_holiday` to `blocked_dates`
+  - Creates `appointment_notifications` table with RLS
 
-## RLS Policies Added
+## Environment Variables Added
 
-- Phase 6 adds no new RLS policies.
-- Public widget reads/writes are performed only inside server routes with the Supabase service-role client.
-- The public endpoint scopes every operation by the clinic resolved from `clinicSlug`.
-- No service-role key or internal provider keys are exposed to the browser.
-- Existing authenticated RLS policies still protect dashboard access and prevent cross-clinic dashboard reads/writes.
+New in `.env.example` (SMS providers — not yet active):
+```
+SEMAPHORE_API_KEY=
+SEMAPHORE_SENDER_NAME=
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_PHONE=
+INFOBIP_BASE_URL=
+INFOBIP_API_KEY=
+INFOBIP_SENDER=
+```
 
-## Environment Variables Required
+Existing variables used by Phase 7 (already in `.env.example`):
+```
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+NEXT_PUBLIC_APP_URL=
+```
 
-Required for database access:
+## Commands Run
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-Required when clinic AI provider is OpenAI:
-
-- `OPENAI_API_KEY`
-
-Optional when clinic AI provider is Ollama:
-
-- `OLLAMA_BASE_URL`
-
-Optional for embed snippet origin generation:
-
-- `NEXT_PUBLIC_APP_URL`
-
-If `NEXT_PUBLIC_APP_URL` is not set, `/ai/widget` derives the origin from request headers and falls back to `https://yourdomain.com`.
+```bash
+npm install resend
+npm run lint       # ✔ No ESLint warnings or errors
+npm run typecheck  # ✔ No TypeScript errors
+```
 
 ## Known Issues
 
-- Supabase migrations must be applied before testing AI settings, FAQ, conversations, messages, patients, appointments, and widget booking.
-- No automated test framework or `npm test` script exists yet.
-- The widget booking flow is deterministic through UI actions; model-native tool-calling is still not implemented.
-- The public widget uses an in-memory rate limiter, which is suitable for a single server process but should move to Redis/Upstash or a database-backed limiter for multi-instance production deployments.
-- The widget creates appointments from selected available slots, but reschedule/cancel self-service is not implemented yet.
-- The widget currently suggests slots across active doctors or clinic-level availability; explicit doctor selection in the public UI can be expanded later.
-
-## Validation
-
-Run after Phase 6:
-
-```bash
-npm run lint
-npm run typecheck
-```
-
-Both passed after implementing the widget.
+- **Appointment reminders require a scheduler.** The `notify_appointment_reminder` flag and `reminder_hours_before` preference are stored and respected by `sendAppointmentEmail()`, but no cron job is wired yet. Set up Supabase `pg_cron`, Vercel Cron, or a queue job that calls `sendAppointmentEmailById(id, "appointment_reminder")` for appointments due within `reminder_hours_before` hours.
+- **SMS not yet implemented.** `sendSmsNotification()` is a no-op stub. Implement a concrete Semaphore/Twilio/Infobip client in `lib/notifications/sms/` when an SMS contract is in place.
+- **Confirmation token page not built.** `appointments.confirmation_token` is generated and included in email links as `/confirm/{token}`, but the public patient page at `app/confirm/[token]/page.tsx` is not yet implemented. The URL appears in emails but leads to a 404 until Phase 8.
+- **PH holiday dates for Islamic holidays (Eid)** use estimated dates. Confirm official proclamation dates each year and update `lib/constants/ph-holidays.ts`.
+- **Rate limiter still in-memory.** Inherited from Phase 6. Move to Redis/Upstash for multi-instance production.
+- **No automated test framework.** `npm test` is not configured.
 
 ## Next Recommended Phase Prompt
 
-Phase 7 should implement patient-facing confirmation and communication workflows:
+Phase 8 should implement the patient-facing confirmation portal and billing:
 
 ```txt
-Continue from the existing implementation. Build appointment confirmation, reminders, and patient communication workflows.
+Continue from Phase 7. Implement the patient-facing appointment confirmation portal and PayMongo billing.
 
-Include patient confirmation pages, appointment lookup by secure token, reschedule/cancel requests, email/SMS notification abstractions, reminder scheduling metadata, staff notification views, and audit logs for patient-driven appointment changes.
+Patient portal:
+- Public page at /confirm/[token] showing appointment details (no login required)
+- Cancel appointment action via secure token
+- Request-reschedule action (creates a note for staff)
+- Audit log for patient-driven changes (actor_id = null, source = patient_portal)
 
-Keep all clinic data tenant-scoped. Preserve the existing widget booking flow and AI assistant architecture. Run lint, typecheck, and update CODEX_HANDOFF.md.
+PayMongo billing:
+- Subscription plans page at /billing
+- PayMongo checkout for clinic subscriptions (monthly/annual in PHP)
+- GCash and credit card payment support
+- Webhook handler for payment events
+- Clinic status gating (active/trial/suspended) based on subscription
+- Free trial countdown visible in the dashboard
+
+Keep all data tenant-scoped. Preserve existing Phase 7 notification and widget flows.
+Run lint, typecheck, and update CODEX_HANDOFF.md.
 ```
