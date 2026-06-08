@@ -1,13 +1,32 @@
-export default async function ClinicWidgetPage({ params }: { params: Promise<{ clinicSlug: string }> }) {
-  const { clinicSlug } = await params;
+import { notFound } from "next/navigation";
+import { BookingWidget } from "@/components/widget/booking-widget";
+import { getPublicWidgetConfig } from "@/server/widget/chat";
 
+export const dynamic = "force-dynamic";
+
+function WidgetUnavailable() {
   return (
-    <main className="min-h-screen bg-white p-6">
-      <div className="mx-auto max-w-md rounded-2xl border border-border p-6 shadow-soft">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">Booking widget</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-950">{clinicSlug}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">Public appointment booking widget placeholder.</p>
+    <main className="flex min-h-screen items-center justify-center bg-transparent p-4">
+      <div className="max-w-sm rounded-2xl bg-white p-5 text-sm leading-6 text-slate-600 shadow-2xl ring-1 ring-blue-100">
+        The booking assistant is temporarily unavailable. Please contact the clinic directly.
       </div>
     </main>
   );
+}
+
+export default async function ClinicWidgetPage({ params }: { params: Promise<{ clinicSlug: string }> }) {
+  const { clinicSlug } = await params;
+  let config;
+
+  try {
+    config = await getPublicWidgetConfig(clinicSlug);
+  } catch {
+    return <WidgetUnavailable />;
+  }
+
+  if (!config) {
+    notFound();
+  }
+
+  return <BookingWidget {...config} />;
 }

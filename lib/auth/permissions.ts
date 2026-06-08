@@ -20,7 +20,9 @@ export type Permission =
   | "services:view"
   | "services:manage"
   | "availability:view"
-  | "availability:manage";
+  | "availability:manage"
+  | "ai:view"
+  | "ai:manage";
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
@@ -43,7 +45,9 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "services:view",
     "services:manage",
     "availability:view",
-    "availability:manage"
+    "availability:manage",
+    "ai:view",
+    "ai:manage"
   ],
   clinic_owner: [
     "clinic_settings:view",
@@ -64,7 +68,9 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "services:view",
     "services:manage",
     "availability:view",
-    "availability:manage"
+    "availability:manage",
+    "ai:view",
+    "ai:manage"
   ],
   receptionist: [
     "clinic_settings:view",
@@ -75,10 +81,11 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "patients:manage",
     "doctors:view",
     "services:view",
-    "availability:view"
+    "availability:view",
+    "ai:view"
   ],
-  doctor: ["appointments:view_assigned", "patients:view_related", "patients:view", "doctors:view", "services:view", "availability:view"],
-  staff: ["clinic_settings:view", "appointments:view_all", "patients:view", "doctors:view", "services:view", "availability:view"]
+  doctor: ["appointments:view_assigned", "patients:view_related", "patients:view", "doctors:view", "services:view", "availability:view", "ai:view"],
+  staff: ["clinic_settings:view", "appointments:view_all", "patients:view", "doctors:view", "services:view", "availability:view", "ai:view"]
 };
 
 export const assignableRoles: AssignableUserRole[] = ["clinic_owner", "receptionist", "doctor", "staff"];

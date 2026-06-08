@@ -50,6 +50,13 @@ export type ClinicSettings = {
   default_language: string;
   default_currency: "PHP";
   timezone: "Asia/Manila";
+  ai_provider: AiProviderOption;
+  ai_model: string;
+  ai_tone: AiTone;
+  ai_welcome_message: string;
+  ai_booking_instructions: string | null;
+  ai_enabled: boolean;
+  ai_widget_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -193,4 +200,47 @@ export type AppointmentWithRelations = Appointment & {
   patients: Pick<Patient, "id" | "full_name" | "phone" | "email"> | null;
   doctors: Pick<Doctor, "id" | "full_name" | "specialization"> | null;
   services: Pick<Service, "id" | "name" | "duration_minutes" | "price_centavos" | "color"> | null;
+};
+
+export type AiProviderOption = "openai" | "ollama";
+export type AiTone = "professional" | "friendly" | "formal" | "casual";
+export type AiConversationChannel = "widget" | "dashboard" | "facebook" | "whatsapp" | "sms";
+export type AiConversationStatus = "open" | "booked" | "handoff" | "closed";
+export type AiMessageRole = "user" | "assistant" | "system" | "tool";
+
+export type FaqItem = {
+  id: string;
+  clinic_id: string;
+  question: string;
+  answer: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiConversation = {
+  id: string;
+  clinic_id: string;
+  patient_id: string | null;
+  patient_temp_id: string | null;
+  channel: AiConversationChannel;
+  status: AiConversationStatus;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiMessage = {
+  id: string;
+  conversation_id: string;
+  clinic_id: string;
+  role: AiMessageRole;
+  content: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type AiConversationWithMessages = AiConversation & {
+  patients: Pick<Patient, "id" | "full_name" | "phone" | "email"> | null;
+  ai_messages: AiMessage[];
 };

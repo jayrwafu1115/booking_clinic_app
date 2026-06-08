@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_PROVIDERS, AI_TONES } from "@/lib/constants/ai";
 import { ASSIGNABLE_USER_ROLES, CLINIC_TYPES, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
 
 const optionalText = z.string().trim().optional().transform((value) => value || null);
@@ -44,4 +45,39 @@ export const updateUserRoleSchema = z.object({
 
 export const deactivateUserSchema = z.object({
   userId: z.string().uuid()
+});
+
+export const aiSettingsSchema = z.object({
+  aiEnabled: z.enum(["on"]).optional().transform((value) => value === "on"),
+  aiProvider: z.enum(AI_PROVIDERS),
+  aiModel: z.string().trim().min(1).max(80),
+  aiTone: z.enum(AI_TONES),
+  aiWelcomeMessage: z.string().trim().min(3).max(500),
+  aiBookingInstructions: optionalText,
+  aiWidgetEnabled: z.enum(["on"]).optional().transform((value) => value === "on")
+});
+
+export const faqItemSchema = z.object({
+  id: z.string().uuid().optional(),
+  question: z.string().trim().min(3).max(500),
+  answer: z.string().trim().min(3).max(2000),
+  active: z.enum(["on"]).optional().transform((value) => value === "on")
+});
+
+export const faqItemDeleteSchema = z.object({
+  id: z.string().uuid()
+});
+
+export const createConversationSchema = z.object({
+  channel: z.enum(["widget", "dashboard", "facebook", "whatsapp", "sms"]).default("dashboard")
+});
+
+export const sendAiMessageSchema = z.object({
+  conversationId: z.string().uuid(),
+  content: z.string().trim().min(1).max(4000)
+});
+
+export const handoffConversationSchema = z.object({
+  conversationId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(500)
 });

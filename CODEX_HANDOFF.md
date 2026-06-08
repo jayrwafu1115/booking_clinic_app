@@ -5,124 +5,158 @@
 - Product: ClinicFlow AI PH
 - Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase, FullCalendar
 - Current branch: `main`
-- Current phase completed: Phase 4 - Appointment Booking Engine and Calendar
+- Current phase completed: Phase 6 - Embeddable AI Booking Widget
 
 ## Phase Completed
 
-Phase 4 implements manual appointment booking, appointment lifecycle management, FullCalendar calendar views, drag-to-reschedule validation, and real dashboard metrics.
+Phase 6 builds the public embeddable AI booking widget on top of the Phase 5 AI assistant and Phase 4 appointment engine.
 
 ## Features Implemented
 
-- Manual appointment creation and editing
-- Server-side conflict checks for overlapping doctor appointments
-- Service-duration-based appointment end times
-- Availability rule checks for open hours and breaks
-- Blocked date checks for clinic-wide and doctor-specific closures
-- Appointment status lifecycle:
-  - `booked -> confirmed`
-  - `booked -> cancelled`
-  - `confirmed -> checked_in`
-  - `confirmed -> cancelled`
-  - `checked_in -> in_progress`
-  - `in_progress -> completed`
-  - `booked/confirmed -> no_show`
-- Appointment list with doctor, service, and status filters
-- Appointment detail and edit pages
-- FullCalendar day/week/month/list views
-- Drag-and-drop appointment rescheduling with server validation
-- Calendar filters by doctor, service, and status
-- Status-based calendar colors
-- Dashboard metrics from real clinic-scoped data:
-  - Appointments today
-  - Upcoming appointments
-  - Total patients
-  - Revenue this month from completed appointments
-  - No-show rate
-  - Cancellation rate
+- Public widget route at `/widget/[clinicSlug]`
+- Public widget chat endpoint at `/api/widget/[clinicSlug]/chat`
+- Server-only clinic slug resolution with active-clinic checks
+- Clinic branding in the widget:
+  - Clinic name
+  - Clinic logo
+  - Clinic primary color
+- Clinic AI settings support:
+  - AI enabled
+  - Widget enabled
+  - Provider/model/tone/welcome message/instructions
+- Floating button mode
+- Expanded responsive chat panel
+- Message bubbles
+- Typing indicator
+- Smooth open/close and hover transitions
+- Quick reply buttons for online-booking-enabled services
+- FAQ-first answer path before LLM fallback
+- Emergency safety response rule
+- Public booking conversation storage in `ai_conversations`
+- Public message storage in `ai_messages`
+- Explicit booking flow:
+  - Select service
+  - Suggest available slots
+  - Select slot
+  - Collect patient full name and phone
+  - Ask for optional email
+  - Confirm booking
+  - Create or reuse patient by phone
+  - Create appointment with `source = 'widget'`
+- Public endpoint rate limiting by IP and clinic slug
+- Dashboard embed page at `/ai/widget`
+- Copyable widget URL, iframe snippet, and JavaScript snippet
 
 ## Files Changed
 
-- `package.json`
-- `package-lock.json`
-- `app/globals.css`
-- `app/(dashboard)/appointments/page.tsx`
-- `app/(dashboard)/appointments/new/page.tsx`
-- `app/(dashboard)/appointments/[id]/page.tsx`
-- `app/(dashboard)/appointments/[id]/edit/page.tsx`
-- `app/(dashboard)/appointments/loading.tsx`
-- `app/(dashboard)/calendar/page.tsx`
-- `app/(dashboard)/calendar/loading.tsx`
-- `app/(dashboard)/dashboard/page.tsx`
-- `components/appointments/appointment-calendar.tsx`
-- `components/appointments/appointment-form.tsx`
-- `components/appointments/status-badge.tsx`
-- `components/appointments/status-transition-form.tsx`
-- `components/dashboard/dashboard-overview.tsx`
+- `CODEX_HANDOFF.md`
+- `app/(dashboard)/ai/page.tsx`
+- `app/(dashboard)/ai/settings/page.tsx`
+- `app/(dashboard)/ai/faq/page.tsx`
+- `app/(dashboard)/ai/conversations/page.tsx`
+- `app/(dashboard)/ai/conversations/[id]/page.tsx`
+- `app/(dashboard)/ai/conversations/loading.tsx`
+- `app/(dashboard)/ai/widget/page.tsx`
+- `app/api/widget/[clinicSlug]/chat/route.ts`
+- `app/widget/[clinicSlug]/page.tsx`
+- `components/ai/ai-settings-form.tsx`
+- `components/ai/conversation-message-form.tsx`
+- `components/ai/faq-item-form.tsx`
+- `components/ai/handoff-form.tsx`
+- `components/ai/new-conversation-form.tsx`
+- `components/ai/widget-embed-card.tsx`
+- `components/layout/sidebar.tsx`
+- `components/widget/booking-widget.tsx`
+- `lib/ai/provider.ts`
+- `lib/ai/openai-provider.ts`
+- `lib/ai/ollama-provider.ts`
+- `lib/ai/prompts.ts`
+- `lib/ai/tools.ts`
 - `lib/auth/permissions.ts`
-- `lib/constants/appointments.ts`
-- `lib/utils/manila-time.ts`
-- `lib/validations/core.ts`
-- `server/actions/appointments.ts`
-- `server/queries/appointments.ts`
-- `server/queries/dashboard.ts`
+- `lib/constants/ai.ts`
+- `lib/rate-limit.ts`
+- `lib/validations/settings.ts`
+- `server/actions/ai.ts`
+- `server/queries/ai.ts`
+- `server/widget/chat.ts`
 - `types/database.ts`
 
 ## Supabase Tables/Migrations Added
 
-- `supabase/migrations/202606080004_phase_4_appointments.sql`
-- Adds `appointments`
-- Adds updated-at trigger
-- Adds indexes:
-  - `appointments(clinic_id, start_at)`
-  - `appointments(clinic_id, status)`
-  - `appointments(clinic_id, doctor_id, start_at)`
+- Phase 6 adds no new Supabase migration.
+- Phase 6 uses the Phase 5 migration:
+  - `supabase/migrations/202606080005_phase_5_ai_booking_assistant.sql`
+- The widget relies on these existing tables:
+  - `clinics`
+  - `clinic_settings`
+  - `services`
+  - `doctors`
+  - `availability_rules`
+  - `blocked_dates`
+  - `patients`
+  - `appointments`
+  - `faq_items`
+  - `ai_conversations`
+  - `ai_messages`
 
 ## RLS Policies Added
 
-The appointments migration enables RLS and adds:
-
-- `Super admins can manage appointments`
-- `Clinic users can manage own appointments`
-
-These policies enforce tenant isolation by `clinic_id = get_my_clinic_id()`.
+- Phase 6 adds no new RLS policies.
+- Public widget reads/writes are performed only inside server routes with the Supabase service-role client.
+- The public endpoint scopes every operation by the clinic resolved from `clinicSlug`.
+- No service-role key or internal provider keys are exposed to the browser.
+- Existing authenticated RLS policies still protect dashboard access and prevent cross-clinic dashboard reads/writes.
 
 ## Environment Variables Required
 
-Required for real database-backed behavior:
+Required for database access:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Existing future-phase variables remain in `.env.example` for OpenAI/Ollama, Resend, PayMongo, and optional direct GCash access.
+Required when clinic AI provider is OpenAI:
+
+- `OPENAI_API_KEY`
+
+Optional when clinic AI provider is Ollama:
+
+- `OLLAMA_BASE_URL`
+
+Optional for embed snippet origin generation:
+
+- `NEXT_PUBLIC_APP_URL`
+
+If `NEXT_PUBLIC_APP_URL` is not set, `/ai/widget` derives the origin from request headers and falls back to `https://yourdomain.com`.
 
 ## Known Issues
 
+- Supabase migrations must be applied before testing AI settings, FAQ, conversations, messages, patients, appointments, and widget booking.
 - No automated test framework or `npm test` script exists yet.
-- Appointment creation requires existing patients and active services; doctor assignment is optional.
-- Availability validation allows booking when no availability rule exists for the clinic or selected doctor. Once clinics configure rules, those rules are enforced.
-- FullCalendar drag-and-drop calls a server action and shows `window.alert()` on validation failure.
-- Supabase migrations must be applied before testing appointments against a real database.
+- The widget booking flow is deterministic through UI actions; model-native tool-calling is still not implemented.
+- The public widget uses an in-memory rate limiter, which is suitable for a single server process but should move to Redis/Upstash or a database-backed limiter for multi-instance production deployments.
+- The widget creates appointments from selected available slots, but reschedule/cancel self-service is not implemented yet.
+- The widget currently suggests slots across active doctors or clinic-level availability; explicit doctor selection in the public UI can be expanded later.
 
 ## Validation
 
-Run after Phase 4:
+Run after Phase 6:
 
 ```bash
 npm run lint
 npm run typecheck
 ```
 
-Both passed after this handoff was updated.
+Both passed after implementing the widget.
 
 ## Next Recommended Phase Prompt
 
-Phase 5 should implement the public booking widget and AI-assisted booking flow:
+Phase 7 should implement patient-facing confirmation and communication workflows:
 
 ```txt
-Continue from the existing implementation. Build the public clinic booking widget and AI-assisted appointment booking flow.
+Continue from the existing implementation. Build appointment confirmation, reminders, and patient communication workflows.
 
-Include widget route behavior for /widget/[clinicSlug], patient self-booking, service/doctor selection, available slot generation from availability rules and blocked dates, appointment creation from widget source, AI booking conversation scaffolding, and Resend confirmation emails.
+Include patient confirmation pages, appointment lookup by secure token, reschedule/cancel requests, email/SMS notification abstractions, reminder scheduling metadata, staff notification views, and audit logs for patient-driven appointment changes.
 
-Do not implement billing yet. Keep all secrets server-side. Run lint, typecheck, and update CODEX_HANDOFF.md.
+Keep all clinic data tenant-scoped. Preserve the existing widget booking flow and AI assistant architecture. Run lint, typecheck, and update CODEX_HANDOFF.md.
 ```

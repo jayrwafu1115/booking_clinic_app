@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { redirect } from "next/navigation";
 
 export default function AiPage() {
-  return <PlaceholderPage title="AI Conversations" description="AI booking conversations and receptionist handoff queues will live here." />;
+  redirect("/ai/conversations");
 }

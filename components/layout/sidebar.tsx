@@ -34,7 +34,7 @@ const sections = [
   {
     label: "AI Assistant",
     items: [
-      { href: "/ai", label: "AI Conversations", icon: Bot },
+      { href: "/ai/conversations", label: "AI Conversations", icon: Bot },
       { href: "/ai/settings", label: "AI Settings", icon: Settings },
       { href: "/ai/faq", label: "FAQ Knowledge Base", icon: Sparkles },
       { href: "/ai/widget", label: "Widget & Embed", icon: Bot }
