@@ -96,3 +96,24 @@ export const blockedDateSchema = z
 export const blockedDateDeleteSchema = z.object({
   id: z.string().uuid()
 });
+
+export const appointmentSchema = z.object({
+  id: z.string().uuid().optional(),
+  patientId: z.string().uuid(),
+  doctorId: optionalUuid,
+  serviceId: z.string().uuid(),
+  source: z.enum(["manual", "widget", "ai", "phone", "walk_in"]).default("manual"),
+  startAt: z.string().min(1),
+  notes: optionalText
+});
+
+export const appointmentRescheduleSchema = z.object({
+  id: z.string().uuid(),
+  startAt: z.string().min(1)
+});
+
+export const appointmentStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(["booked", "confirmed", "checked_in", "in_progress", "completed", "cancelled", "no_show"]),
+  cancellationReason: optionalText
+});

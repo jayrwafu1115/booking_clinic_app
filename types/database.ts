@@ -160,3 +160,37 @@ export type BlockedDate = {
   created_at: string;
   updated_at: string;
 };
+
+export type AppointmentStatus =
+  | "booked"
+  | "confirmed"
+  | "checked_in"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
+export type AppointmentSource = "manual" | "widget" | "ai" | "phone" | "walk_in";
+
+export type Appointment = {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  doctor_id: string | null;
+  service_id: string;
+  status: AppointmentStatus;
+  source: AppointmentSource;
+  start_at: string;
+  end_at: string;
+  notes: string | null;
+  cancellation_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AppointmentWithRelations = Appointment & {
+  patients: Pick<Patient, "id" | "full_name" | "phone" | "email"> | null;
+  doctors: Pick<Doctor, "id" | "full_name" | "specialization"> | null;
+  services: Pick<Service, "id" | "name" | "duration_minutes" | "price_centavos" | "color"> | null;
+};

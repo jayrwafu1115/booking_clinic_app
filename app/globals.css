@@ -25,3 +25,38 @@
 body {
   @apply bg-background text-foreground antialiased;
 }
+
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: #2563eb;
+  --fc-button-border-color: #2563eb;
+  --fc-button-hover-bg-color: #1d4ed8;
+  --fc-button-hover-border-color: #1d4ed8;
+  --fc-button-active-bg-color: #1e40af;
+  --fc-button-active-border-color: #1e40af;
+  --fc-today-bg-color: rgba(37, 99, 235, 0.08);
+  color: #0f172a;
+}
+
+.fc .fc-toolbar {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.fc .fc-button {
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.fc .fc-event {
+  border-radius: 0.6rem;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+}

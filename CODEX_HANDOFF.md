@@ -3,90 +3,126 @@
 ## Project
 
 - Product: ClinicFlow AI PH
-- Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase
+- Stack: Next.js 15 App Router, TypeScript, Tailwind CSS, Supabase, FullCalendar
 - Current branch: `main`
-- Remote state at recovery: local `main` is ahead of `origin/main` by 1 commit (`6569c44 Implement Clinic Profile, Users, Roles, and Settings`)
+- Current phase completed: Phase 4 - Appointment Booking Engine and Calendar
 
-## Current Phase
+## Phase Completed
 
-Phase 3: Patients, Doctors, Services, Availability, and Blocked Dates.
+Phase 4 implements manual appointment booking, appointment lifecycle management, FullCalendar calendar views, drag-to-reschedule validation, and real dashboard metrics.
 
-## Recovery Summary
+## Features Implemented
 
-The previous Codex run stopped during final validation after most Phase 3 implementation was already present. I recovered from the existing working tree and did not restart or delete the partial implementation.
+- Manual appointment creation and editing
+- Server-side conflict checks for overlapping doctor appointments
+- Service-duration-based appointment end times
+- Availability rule checks for open hours and breaks
+- Blocked date checks for clinic-wide and doctor-specific closures
+- Appointment status lifecycle:
+  - `booked -> confirmed`
+  - `booked -> cancelled`
+  - `confirmed -> checked_in`
+  - `confirmed -> cancelled`
+  - `checked_in -> in_progress`
+  - `in_progress -> completed`
+  - `booked/confirmed -> no_show`
+- Appointment list with doctor, service, and status filters
+- Appointment detail and edit pages
+- FullCalendar day/week/month/list views
+- Drag-and-drop appointment rescheduling with server validation
+- Calendar filters by doctor, service, and status
+- Status-based calendar colors
+- Dashboard metrics from real clinic-scoped data:
+  - Appointments today
+  - Upcoming appointments
+  - Total patients
+  - Revenue this month from completed appointments
+  - No-show rate
+  - Cancellation rate
 
-## Implemented In Phase 3
+## Files Changed
 
-- Supabase migration:
-  - `supabase/migrations/202606050003_phase_3_core_modules.sql`
-  - Adds `patients`, `doctors`, `services`, `availability_rules`, and `blocked_dates`
-  - Adds updated-at triggers, indexes, and tenant RLS policies
+- `package.json`
+- `package-lock.json`
+- `app/globals.css`
+- `app/(dashboard)/appointments/page.tsx`
+- `app/(dashboard)/appointments/new/page.tsx`
+- `app/(dashboard)/appointments/[id]/page.tsx`
+- `app/(dashboard)/appointments/[id]/edit/page.tsx`
+- `app/(dashboard)/appointments/loading.tsx`
+- `app/(dashboard)/calendar/page.tsx`
+- `app/(dashboard)/calendar/loading.tsx`
+- `app/(dashboard)/dashboard/page.tsx`
+- `components/appointments/appointment-calendar.tsx`
+- `components/appointments/appointment-form.tsx`
+- `components/appointments/status-badge.tsx`
+- `components/appointments/status-transition-form.tsx`
+- `components/dashboard/dashboard-overview.tsx`
+- `lib/auth/permissions.ts`
+- `lib/constants/appointments.ts`
+- `lib/utils/manila-time.ts`
+- `lib/validations/core.ts`
+- `server/actions/appointments.ts`
+- `server/queries/appointments.ts`
+- `server/queries/dashboard.ts`
+- `types/database.ts`
 
-- Types:
-  - Extended `types/database.ts` with `Patient`, `Doctor`, `Service`, `AvailabilityRule`, and `BlockedDate`
+## Supabase Tables/Migrations Added
 
-- Permissions:
-  - Extended `lib/auth/permissions.ts` for patient, doctor, service, and availability access
+- `supabase/migrations/202606080004_phase_4_appointments.sql`
+- Adds `appointments`
+- Adds updated-at trigger
+- Adds indexes:
+  - `appointments(clinic_id, start_at)`
+  - `appointments(clinic_id, status)`
+  - `appointments(clinic_id, doctor_id, start_at)`
 
-- Validation:
-  - Added `lib/validations/core.ts` with Zod schemas for all Phase 3 forms
+## RLS Policies Added
 
-- Server layer:
-  - Added `server/queries/core.ts`
-  - Added `server/actions/core.ts`
-  - Includes patient create/update/delete, doctor create/update/deactivate, service create/update/deactivate, availability save, and blocked date create/delete
+The appointments migration enables RLS and adds:
 
-- UI components:
-  - Added shared components under `components/core/`
-  - Includes module headers, empty/loading states, confirm action forms, and forms for patients/doctors/services/availability/blocked dates
+- `Super admins can manage appointments`
+- `Clinic users can manage own appointments`
 
-- Routes:
-  - Patients:
-    - `/patients`
-    - `/patients/new`
-    - `/patients/[id]`
-    - `/patients/[id]/edit`
-  - Doctors:
-    - `/doctors`
-    - `/doctors/new`
-    - `/doctors/[id]/edit`
-  - Services:
-    - `/services`
-    - `/services/new`
-    - `/services/[id]/edit`
-  - Availability:
-    - `/availability`
-    - `/availability/blocked-dates`
+These policies enforce tenant isolation by `clinic_id = get_my_clinic_id()`.
+
+## Environment Variables Required
+
+Required for real database-backed behavior:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Existing future-phase variables remain in `.env.example` for OpenAI/Ollama, Resend, PayMongo, and optional direct GCash access.
+
+## Known Issues
+
+- No automated test framework or `npm test` script exists yet.
+- Appointment creation requires existing patients and active services; doctor assignment is optional.
+- Availability validation allows booking when no availability rule exists for the clinic or selected doctor. Once clinics configure rules, those rules are enforced.
+- FullCalendar drag-and-drop calls a server action and shows `window.alert()` on validation failure.
+- Supabase migrations must be applied before testing appointments against a real database.
 
 ## Validation
 
-Completed successfully:
+Run after Phase 4:
 
 ```bash
 npm run lint
 npm run typecheck
-npm run build
 ```
 
-No `test` script exists in `package.json`, so automated tests were not run.
+Both passed after this handoff was updated.
 
-HTTP smoke checks returned `200` after the dev server finished compiling:
+## Next Recommended Phase Prompt
 
-- `/patients`
-- `/doctors`
-- `/services`
-- `/availability`
-- `/availability/blocked-dates`
-
-Dev server used during recovery:
+Phase 5 should implement the public booking widget and AI-assisted booking flow:
 
 ```txt
-http://localhost:3000
+Continue from the existing implementation. Build the public clinic booking widget and AI-assisted appointment booking flow.
+
+Include widget route behavior for /widget/[clinicSlug], patient self-booking, service/doctor selection, available slot generation from availability rules and blocked dates, appointment creation from widget source, AI booking conversation scaffolding, and Resend confirmation emails.
+
+Do not implement billing yet. Keep all secrets server-side. Run lint, typecheck, and update CODEX_HANDOFF.md.
 ```
-
-## Notes For Next Continuation
-
-- Apply Supabase migrations before testing database-backed CRUD.
-- Real CRUD mutations require valid Supabase environment variables and an authenticated clinic user.
-- There is no `hooks/` directory in the current project.
-- Phase 3 intentionally stops at clinic management modules. Do not implement appointment scheduling or future phases unless explicitly requested.

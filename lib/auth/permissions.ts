@@ -11,6 +11,7 @@ export type Permission =
   | "audit_logs:view"
   | "appointments:view_all"
   | "appointments:view_assigned"
+  | "appointments:manage"
   | "patients:view_related"
   | "patients:view"
   | "patients:manage"
@@ -33,6 +34,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "audit_logs:view",
     "appointments:view_all",
     "appointments:view_assigned",
+    "appointments:manage",
     "patients:view_related",
     "patients:view",
     "patients:manage",
@@ -53,6 +55,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "billing:view",
     "audit_logs:view",
     "appointments:view_all",
+    "appointments:manage",
     "patients:view_related",
     "patients:view",
     "patients:manage",
@@ -66,6 +69,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
   receptionist: [
     "clinic_settings:view",
     "appointments:view_all",
+    "appointments:manage",
     "patients:view_related",
     "patients:view",
     "patients:manage",
@@ -74,7 +78,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "availability:view"
   ],
   doctor: ["appointments:view_assigned", "patients:view_related", "patients:view", "doctors:view", "services:view", "availability:view"],
-  staff: ["clinic_settings:view", "patients:view", "doctors:view", "services:view", "availability:view"]
+  staff: ["clinic_settings:view", "appointments:view_all", "patients:view", "doctors:view", "services:view", "availability:view"]
 };
 
 export const assignableRoles: AssignableUserRole[] = ["clinic_owner", "receptionist", "doctor", "staff"];
