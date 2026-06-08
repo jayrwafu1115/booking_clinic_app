@@ -11,7 +11,15 @@ export type Permission =
   | "audit_logs:view"
   | "appointments:view_all"
   | "appointments:view_assigned"
-  | "patients:view_related";
+  | "patients:view_related"
+  | "patients:view"
+  | "patients:manage"
+  | "doctors:view"
+  | "doctors:manage"
+  | "services:view"
+  | "services:manage"
+  | "availability:view"
+  | "availability:manage";
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
@@ -25,7 +33,15 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "audit_logs:view",
     "appointments:view_all",
     "appointments:view_assigned",
-    "patients:view_related"
+    "patients:view_related",
+    "patients:view",
+    "patients:manage",
+    "doctors:view",
+    "doctors:manage",
+    "services:view",
+    "services:manage",
+    "availability:view",
+    "availability:manage"
   ],
   clinic_owner: [
     "clinic_settings:view",
@@ -37,11 +53,28 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "billing:view",
     "audit_logs:view",
     "appointments:view_all",
-    "patients:view_related"
+    "patients:view_related",
+    "patients:view",
+    "patients:manage",
+    "doctors:view",
+    "doctors:manage",
+    "services:view",
+    "services:manage",
+    "availability:view",
+    "availability:manage"
   ],
-  receptionist: ["clinic_settings:view", "appointments:view_all", "patients:view_related"],
-  doctor: ["appointments:view_assigned", "patients:view_related"],
-  staff: ["clinic_settings:view"]
+  receptionist: [
+    "clinic_settings:view",
+    "appointments:view_all",
+    "patients:view_related",
+    "patients:view",
+    "patients:manage",
+    "doctors:view",
+    "services:view",
+    "availability:view"
+  ],
+  doctor: ["appointments:view_assigned", "patients:view_related", "patients:view", "doctors:view", "services:view", "availability:view"],
+  staff: ["clinic_settings:view", "patients:view", "doctors:view", "services:view", "availability:view"]
 };
 
 export const assignableRoles: AssignableUserRole[] = ["clinic_owner", "receptionist", "doctor", "staff"];

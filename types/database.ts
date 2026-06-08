@@ -77,3 +77,86 @@ export type UserInvite = {
   created_at: string;
   updated_at: string;
 };
+
+export type PatientGender = "male" | "female" | "other" | "prefer_not_to_say";
+
+export type Patient = {
+  id: string;
+  clinic_id: string;
+  full_name: string;
+  email: string | null;
+  phone: string;
+  birth_date: string | null;
+  gender: PatientGender | null;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  barangay: string | null;
+  city: string | null;
+  province: string | null;
+  region: string | null;
+  postal_code: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Doctor = {
+  id: string;
+  clinic_id: string;
+  profile_id: string | null;
+  full_name: string;
+  specialization: string | null;
+  license_no: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Service = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  duration_minutes: number;
+  price_centavos: number;
+  color: string;
+  icon: string | null;
+  online_booking_enabled: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AvailabilityRule = {
+  id: string;
+  clinic_id: string;
+  doctor_id: string | null;
+  day_of_week: number;
+  is_open: boolean;
+  open_time: string | null;
+  close_time: string | null;
+  break_start: string | null;
+  break_end: string | null;
+  slot_interval_minutes: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BlockedDate = {
+  id: string;
+  clinic_id: string;
+  doctor_id: string | null;
+  title: string;
+  reason: string | null;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  created_at: string;
+  updated_at: string;
+};

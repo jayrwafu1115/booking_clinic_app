@@ -1,11 +1,9 @@
-import Link from "next/link";
-import { Ban, CalendarDays } from "lucide-react";
-import { AvailabilityForm } from "@/components/core/availability-form";
+import { Ban } from "lucide-react";
+import { BlockedDateForm } from "@/components/core/blocked-date-form";
 import { ConfirmActionForm } from "@/components/core/confirm-action-form";
 import { EmptyState } from "@/components/core/empty-state";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deleteBlockedDateAction } from "@/server/actions/core";
 import { getAvailabilityData } from "@/server/queries/core";
@@ -13,39 +11,32 @@ import { formatManilaDateTime } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function AvailabilityPage({ searchParams }: { searchParams?: Promise<{ doctorId?: string }> }) {
+export default async function BlockedDatesPage() {
   try {
     const data = await getAvailabilityData();
 
     if (!data) {
-      return <AccessCard title="Availability unavailable" message="Sign in with a clinic account to view availability." />;
+      return <AccessCard title="Blocked dates unavailable" message="Sign in with a clinic account to manage blocked dates." />;
     }
 
-    const params = await searchParams;
-    const selectedDoctorId = data.doctors.some((doctor) => doctor.id === params?.doctorId) ? params?.doctorId ?? "" : "";
     const doctorNameById = new Map(data.doctors.map((doctor) => [doctor.id, doctor.full_name]));
 
     return (
       <div className="space-y-6">
         <ModuleHeader
           eyebrow="Scheduling"
-          title="Availability"
-          description="Configure Manila-time clinic or doctor weekly availability and manage upcoming blocked dates."
-          action={{ href: "/availability/blocked-dates", label: "Blocked dates", icon: Ban }}
-          icon={CalendarDays}
+          title="Blocked Dates"
+          description="Create clinic-wide closures or doctor-specific unavailable periods in Asia/Manila time."
+          icon={Ban}
         />
-        <AvailabilityForm doctors={data.doctors} rules={data.rules} selectedDoctorId={selectedDoctorId} canManage={data.canManage} />
-
+        <BlockedDateForm doctors={data.doctors} canManage={data.canManage} />
         <Card>
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Recent Blocked Dates</CardTitle>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/availability/blocked-dates">Manage all</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle>All Blocked Dates</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.blockedDates.length === 0 ? (
-              <EmptyState icon={Ban} title="No blocked dates" description="Create holidays, doctor leaves, and clinic closures from the blocked dates page." />
+              <EmptyState icon={Ban} title="No blocked dates yet" description="Add holidays, maintenance, staff events, or provider leave to protect appointment slots." />
             ) : (
               data.blockedDates.map((blockedDate) => (
                 <div key={blockedDate.id} className="grid gap-3 rounded-2xl border border-border p-4 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -73,7 +64,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams?
       </div>
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not load availability.";
-    return <AccessCard title="Availability could not load" message={message} />;
+    const message = error instanceof Error ? error.message : "Could not load blocked dates.";
+    return <AccessCard title="Blocked dates could not load" message={message} />;
   }
 }
