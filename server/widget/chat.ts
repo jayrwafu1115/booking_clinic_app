@@ -66,10 +66,13 @@ export type WidgetChatResponse = {
   messages: Pick<AiMessage, "id" | "role" | "content" | "metadata" | "created_at">[];
   quickReplies: WidgetQuickReply[];
   services?: PublicWidgetService[];
+  availableDates?: string[];
   slots?: WidgetSlot[];
   selectedServiceId?: string;
   selectedSlot?: WidgetSlot;
+  needsPhoneLookup?: boolean;
   needsPatientDetails?: boolean;
+  patientLookup?: { found: true; patientName: string; phone: string } | { found: false; phone: string };
   appointment?: {
     id: string;
     startAt: string;
@@ -117,12 +120,25 @@ export const widgetChatRequestSchema = z.discriminatedUnion("type", [
     serviceId: z.string().uuid()
   }),
   z.object({
+    type: z.literal("select_date"),
+    conversationId: z.string().uuid().optional(),
+    patientTempId: patientTempIdSchema,
+    serviceId: z.string().uuid(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  }),
+  z.object({
     type: z.literal("select_slot"),
     conversationId: z.string().uuid().optional(),
     patientTempId: patientTempIdSchema,
     serviceId: z.string().uuid(),
     doctorId: optionalUuid,
     startAt: z.string().datetime({ offset: true })
+  }),
+  z.object({
+    type: z.literal("lookup_patient"),
+    conversationId: z.string().uuid().optional(),
+    patientTempId: patientTempIdSchema,
+    phone: z.string().trim().min(6).max(40)
   }),
   z.object({
     type: z.literal("confirm_booking"),
@@ -133,7 +149,7 @@ export const widgetChatRequestSchema = z.discriminatedUnion("type", [
     startAt: z.string().datetime({ offset: true }),
     patient: z.object({
       fullName: z.string().trim().min(2).max(160),
-      phone: z.string().trim().min(7).max(40),
+      phone: z.string().trim().min(6).max(40),
       email: z.string().trim().email().optional().or(z.literal("")).transform((value) => value || null)
     })
   })
@@ -146,7 +162,7 @@ function normalizeSettings(settings: PublicWidgetSettings | null): PublicWidgetS
     ai_enabled: settings?.ai_enabled ?? true,
     ai_widget_enabled: settings?.ai_widget_enabled ?? true,
     ai_provider: settings?.ai_provider ?? "openai",
-    ai_model: settings?.ai_model ?? "gpt-4o",
+    ai_model: settings?.ai_model ?? "gpt-4o-mini",
     ai_tone: settings?.ai_tone ?? "professional",
     ai_welcome_message: settings?.ai_welcome_message ?? DEFAULT_AI_WELCOME_MESSAGE,
     ai_booking_instructions: settings?.ai_booking_instructions ?? null
@@ -185,6 +201,10 @@ function hasEmergencyIntent(content: string) {
   return /\b(emergency|chest pain|can't breathe|cannot breathe|severe bleeding|stroke|heart attack|unconscious)\b/i.test(content);
 }
 
+function hasPriceIntent(content: string) {
+  return /\b(how much|price|cost|fee|rate|charge|magkano|presyo|bayad|libre|free)\b/i.test(content);
+}
+
 function timeLt(left: string, right: string) {
   return left.localeCompare(right) < 0;
 }
@@ -208,6 +228,20 @@ function formatManilaDateTime(value: string) {
     timeStyle: "short",
     timeZone: "Asia/Manila"
   }).format(new Date(value));
+}
+
+function formatManilaTime(value: string) {
+  return new Intl.DateTimeFormat("en-PH", {
+    timeStyle: "short",
+    timeZone: "Asia/Manila"
+  }).format(new Date(value));
+}
+
+function formatManilaDateLong(manilaDate: string) {
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "full",
+    timeZone: "Asia/Manila"
+  }).format(new Date(`${manilaDate}T12:00:00+08:00`));
 }
 
 function serviceQuickReplies(services: PublicWidgetService[]) {
@@ -377,7 +411,8 @@ async function getPublicAvailableSlots(
   clinicId: string,
   serviceId: string,
   doctorId: string | null | undefined,
-  dateRange: { startDate: string; endDate: string }
+  dateRange: { startDate: string; endDate: string },
+  limit = 12
 ) {
   const { data: service, error: serviceError } = await supabase
     .from("services")
@@ -486,7 +521,7 @@ async function getPublicAvailableSlots(
     dayOffset += 1;
   }
 
-  return slots.sort((left, right) => left.startAt.localeCompare(right.startAt)).slice(0, 12);
+  return slots.sort((left, right) => left.startAt.localeCompare(right.startAt)).slice(0, limit);
 }
 
 async function createPatientIfNeeded(supabase: SupabaseAdminClient, clinicId: string, patientInfo: { fullName: string; phone: string; email: string | null }) {
@@ -503,6 +538,17 @@ async function createPatientIfNeeded(supabase: SupabaseAdminClient, clinicId: st
   }
 
   if (existing) {
+    // Update email if the patient provides one and the record doesn't have one yet
+    if (patientInfo.email && !existing.email) {
+      const { data: updated } = await supabase
+        .from("patients")
+        .update({ email: patientInfo.email })
+        .eq("id", existing.id)
+        .eq("clinic_id", clinicId)
+        .select("*")
+        .single<Patient>();
+      if (updated) return updated;
+    }
     return existing;
   }
 
@@ -728,7 +774,36 @@ export async function handleWidgetChat(
       } else {
         matchedServices = await searchPublicServices(supabase, config.clinic.id, request.content);
 
-        if (matchedServices.length > 0) {
+        const priceIntent = hasPriceIntent(request.content);
+
+        if (priceIntent && matchedServices.length === 0) {
+          // Generic "how much?" with no specific service — show all service prices
+          const allPrices = config.services
+            .map((service) => {
+              const price =
+                service.price_centavos != null
+                  ? `PHP ${(service.price_centavos / 100).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+                  : "price upon request";
+              return `• ${service.name}: ${price} (${service.duration_minutes} mins)`;
+            })
+            .join("\n");
+          assistantContent = `Here are our service prices:\n\n${allPrices}\n\nWould you like to book any of these services?`;
+          assistantMetadata = { source: "price_info_all" };
+          quickReplies = serviceQuickReplies(config.services);
+        } else if (matchedServices.length > 0 && priceIntent) {
+          const priceList = matchedServices
+            .map((service) => {
+              const price =
+                service.price_centavos != null
+                  ? `PHP ${(service.price_centavos / 100).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+                  : "price upon request";
+              return `• ${service.name}: ${price} (${service.duration_minutes} mins)`;
+            })
+            .join("\n");
+          assistantContent = `Here are the prices:\n\n${priceList}\n\nWould you like to book any of these services?`;
+          assistantMetadata = { source: "price_info", matched_services: matchedServices.map((service) => service.id) };
+          quickReplies = serviceQuickReplies(matchedServices);
+        } else if (matchedServices.length > 0) {
           assistantContent = "I found these services for online booking. Which one would you like to schedule?";
           assistantMetadata = { source: "service_search", matched_services: matchedServices.map((service) => service.id) };
           quickReplies = serviceQuickReplies(matchedServices);
@@ -750,7 +825,12 @@ export async function handleWidgetChat(
             const provider = getAiProvider(config.settings.ai_provider);
             const serviceContext = config.services
               .slice(0, 12)
-              .map((service) => `${service.name} (${service.duration_minutes} minutes)`)
+              .map((service) => {
+                const price = service.price_centavos != null
+                  ? ` – PHP ${(service.price_centavos / 100).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+                  : "";
+                return `${service.name} (${service.duration_minutes} mins${price})`;
+              })
               .join(", ");
             const response = await provider.generateReply({
               model: config.settings.ai_model,
@@ -758,7 +838,7 @@ export async function handleWidgetChat(
               messages: [
                 {
                   role: "system",
-                  content: `Public widget context. Clinic: ${config.clinic.name}. Online-booking-enabled services: ${serviceContext || "none configured"}.`
+                  content: `Public widget context. Clinic: ${config.clinic.name}. Online-booking-enabled services: ${serviceContext || "none configured"}.${matchedServices.length > 0 ? ` The patient's query matched these services: ${matchedServices.map((s) => s.name).join(", ")}.` : ""}`
                 },
                 ...(recentMessagesResult.data ?? []).map((message) => ({
                   role: message.role === "tool" ? ("assistant" as const) : message.role,
@@ -804,18 +884,19 @@ export async function handleWidgetChat(
       service_id: service.id
     });
     const today = getManilaParts(new Date().toISOString()).date;
-    const slots = await getPublicAvailableSlots(supabase, config.clinic.id, service.id, null, {
+    const allSlots = await getPublicAvailableSlots(supabase, config.clinic.id, service.id, null, {
       startDate: today,
       endDate: addDays(today, 14)
-    });
+    }, 200);
+    const availableDates = [...new Set(allSlots.map((slot) => getManilaParts(slot.startAt).date))];
     const assistantContent =
-      slots.length > 0
-        ? `Here are the earliest available ${service.name} slots. Please choose one.`
+      availableDates.length > 0
+        ? `Please select a date for your ${service.name} appointment.`
         : `I could not find an available ${service.name} slot in the next two weeks. Please contact the clinic for assistance.`;
     const assistantMessage = await insertWidgetMessage(supabase, conversation.id, config.clinic.id, "assistant", assistantContent, {
-      source: "available_slots",
+      source: "available_dates",
       service_id: service.id,
-      slots: slots.slice(0, 6)
+      available_dates: availableDates
     });
 
     return {
@@ -823,8 +904,68 @@ export async function handleWidgetChat(
       patientTempId: conversation.patient_temp_id,
       messages: [userMessage, assistantMessage],
       quickReplies: [],
-      slots: slots.slice(0, 6),
+      availableDates,
       selectedServiceId: service.id
+    };
+  }
+
+  if (request.type === "select_date") {
+    const service = config.services.find((item) => item.id === request.serviceId);
+    if (!service) {
+      throw new WidgetChatError("This service is not available for online booking.", 404);
+    }
+
+    const formattedDate = formatManilaDateLong(request.date);
+    const userMessage = await insertWidgetMessage(
+      supabase, conversation.id, config.clinic.id, "user",
+      `I'd like to book on ${formattedDate}.`,
+      { source: "date_selection", date: request.date, service_id: request.serviceId }
+    );
+
+    const daySlots = await getPublicAvailableSlots(supabase, config.clinic.id, request.serviceId, null, {
+      startDate: request.date,
+      endDate: request.date
+    }, 30);
+
+    if (daySlots.length === 0) {
+      const today = getManilaParts(new Date().toISOString()).date;
+      const allSlots = await getPublicAvailableSlots(supabase, config.clinic.id, request.serviceId, null, {
+        startDate: today,
+        endDate: addDays(today, 14)
+      }, 200);
+      const availableDates = [...new Set(allSlots.map((slot) => getManilaParts(slot.startAt).date))];
+      const assistantMessage = await insertWidgetMessage(
+        supabase, conversation.id, config.clinic.id, "assistant",
+        `No available slots on ${formattedDate}. Please choose another date.`,
+        { source: "no_slots_on_date", date: request.date }
+      );
+      return {
+        conversationId: conversation.id,
+        patientTempId: conversation.patient_temp_id,
+        messages: [userMessage, assistantMessage],
+        quickReplies: [],
+        availableDates,
+        selectedServiceId: request.serviceId
+      };
+    }
+
+    const timeSlots = daySlots.map((slot) => ({
+      ...slot,
+      label: `${formatManilaTime(slot.startAt)}${slot.doctorName ? ` with ${slot.doctorName}` : ""}`
+    }));
+    const assistantMessage = await insertWidgetMessage(
+      supabase, conversation.id, config.clinic.id, "assistant",
+      `Available times on ${formattedDate}. Please choose one.`,
+      { source: "available_slots", service_id: request.serviceId, date: request.date, slots: timeSlots }
+    );
+
+    return {
+      conversationId: conversation.id,
+      patientTempId: conversation.patient_temp_id,
+      messages: [userMessage, assistantMessage],
+      quickReplies: [],
+      slots: timeSlots,
+      selectedServiceId: request.serviceId
     };
   }
 
@@ -856,7 +997,7 @@ export async function handleWidgetChat(
       conversation.id,
       config.clinic.id,
       "assistant",
-      `Great. To confirm ${selectedSlot.serviceName} on ${selectedSlot.label}, please share the patient's full name and phone number. Email is optional.`,
+      `Great. To confirm ${selectedSlot.serviceName} on ${formatManilaDateTime(selectedSlot.startAt)}, please share the patient's full name and phone number. Email is optional.`,
       { source: "patient_details_request", slot: selectedSlot }
     );
 
@@ -867,7 +1008,51 @@ export async function handleWidgetChat(
       quickReplies: [],
       selectedServiceId: request.serviceId,
       selectedSlot,
-      needsPatientDetails: true
+      needsPhoneLookup: true
+    };
+  }
+
+  if (request.type === "lookup_patient") {
+    const phone = request.phone.trim();
+    await updateConversationMetadata(supabase, conversation, { lookup_phone: phone });
+
+    const { data: existing } = await supabase
+      .from("patients")
+      .select("id, full_name")
+      .eq("clinic_id", config.clinic.id)
+      .eq("phone", phone)
+      .maybeSingle<Pick<Patient, "id" | "full_name">>();
+
+    const userMessage = await insertWidgetMessage(
+      supabase, conversation.id, config.clinic.id, "user",
+      `My phone number is ${phone}.`,
+      { source: "phone_lookup" }
+    );
+
+    let assistantContent: string;
+    let patientLookup: WidgetChatResponse["patientLookup"];
+
+    if (existing) {
+      assistantContent = `Welcome back, ${existing.full_name}! Tap below to confirm your appointment.`;
+      patientLookup = { found: true, patientName: existing.full_name, phone };
+    } else {
+      assistantContent = "Looks like you're new here. Please complete your details to confirm the booking.";
+      patientLookup = { found: false, phone };
+    }
+
+    const assistantMessage = await insertWidgetMessage(
+      supabase, conversation.id, config.clinic.id, "assistant",
+      assistantContent,
+      { source: "patient_lookup", patient_found: Boolean(existing) }
+    );
+
+    return {
+      conversationId: conversation.id,
+      patientTempId: conversation.patient_temp_id,
+      messages: [userMessage, assistantMessage],
+      quickReplies: [],
+      needsPatientDetails: true,
+      patientLookup
     };
   }
 

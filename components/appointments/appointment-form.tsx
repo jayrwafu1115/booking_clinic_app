@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthStatus } from "@/components/forms/auth-status";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/core/form-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,7 @@ export function AppointmentForm({
 }) {
   const action = appointment ? updateAppointmentAction : createAppointmentAction;
   const [state, formAction] = useActionState(action, {});
+  const router = useRouter();
   const [serviceId, setServiceId] = useState(appointment?.service_id ?? services[0]?.id ?? "");
   const selectedService = useMemo(() => services.find((service) => service.id === serviceId), [serviceId, services]);
 
@@ -121,7 +124,10 @@ export function AppointmentForm({
           </div>
         </CardContent>
       </Card>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button type="button" variant="outline" onClick={() => appointment ? router.back() : router.push("/appointments")}>
+          Cancel
+        </Button>
         <SubmitButton className="w-full sm:w-auto">{appointment ? "Save appointment" : "Create appointment"}</SubmitButton>
       </div>
     </form>

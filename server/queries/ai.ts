@@ -60,26 +60,53 @@ export async function getFaqItemsData(): Promise<{ profile: Profile; items: FaqI
   return { profile: context.profile, items: data ?? [], canManage: context.canManage };
 }
 
-export async function getAiConversationsData(): Promise<{ profile: Profile; conversations: AiConversation[]; canManage: boolean } | null> {
+export type AiConversationListItem = AiConversation & {
+  patients: { id: string; full_name: string } | null;
+};
+
+export async function getAiConversationsData(params?: {
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<{ profile: Profile; conversations: AiConversationListItem[]; canManage: boolean } | null> {
   const context = await getAiContext();
   if (!context) {
     return null;
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("ai_conversations")
-    .select("*")
+    .select("*, patients(id, full_name)")
     .eq("clinic_id", context.clinicId)
     .order("created_at", { ascending: false })
-    .limit(100)
-    .returns<AiConversation[]>();
+    .limit(200);
+
+  if (params?.dateFrom) {
+    query = query.gte("created_at", `${params.dateFrom}T00:00:00+08:00`);
+  }
+  if (params?.dateTo) {
+    query = query.lte("created_at", `${params.dateTo}T23:59:59+08:00`);
+  }
+
+  const { data, error } = await query.returns<AiConversationListItem[]>();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return { profile: context.profile, conversations: data ?? [], canManage: context.canManage };
+  let conversations = data ?? [];
+
+  if (params?.search) {
+    const q = params.search.toLowerCase();
+    conversations = conversations.filter((c) =>
+      c.patients?.full_name?.toLowerCase().includes(q) ||
+      c.channel.toLowerCase().includes(q) ||
+      c.status.toLowerCase().includes(q)
+    );
+  }
+
+  return { profile: context.profile, conversations, canManage: context.canManage };
 }
 
 export async function getAiConversationData(id: string): Promise<{

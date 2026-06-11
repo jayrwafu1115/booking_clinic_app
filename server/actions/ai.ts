@@ -315,7 +315,7 @@ export async function sendAiMessageAction(_: AiActionState, formData: FormData):
           .filter(Boolean)
           .join("\n");
         const response = await provider.generateReply({
-          model: settings?.ai_model ?? "gpt-4o",
+          model: settings?.ai_model ?? "gpt-4o-mini",
           systemPrompt: buildBookingSystemPrompt(settings),
           messages: [
             ...(contextMessage ? [{ role: "system" as const, content: contextMessage }] : []),

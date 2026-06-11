@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile, requireUser } from "@/lib/auth/session";
 import { assertPermission, isAssignableRole } from "@/lib/auth/permissions";
 import { DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
+import { sendResendEmail } from "@/lib/notifications/resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clinicProfileSchema, deactivateUserSchema, inviteUserSchema, notificationPreferencesSchema, updateUserRoleSchema } from "@/lib/validations/settings";
 import { createAuditLog } from "@/server/audit/create-audit-log";
-import type { Profile } from "@/types/database";
+import type { Clinic, Profile, UserInvite } from "@/types/database";
 
 type SettingsActionState = {
   message?: string;
@@ -165,9 +166,41 @@ export async function inviteUserAction(_: SettingsActionState, formData: FormDat
       }
     });
 
+    const { data: clinic } = await supabase
+      .from("clinics")
+      .select("name")
+      .eq("id", clinicId)
+      .single<Pick<Clinic, "name">>();
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const inviteUrl = `${appUrl}/register?token=${token}&email=${encodeURIComponent(parsed.data.email.toLowerCase())}`;
+    const clinicName = clinic?.name ?? "ClinicFlow AI PH";
+    const roleName = parsed.data.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+
+    await sendResendEmail({
+      to: parsed.data.email,
+      subject: `You've been invited to join ${clinicName} on ClinicFlow AI PH`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e293b">
+          <h2 style="margin:0 0 8px;font-size:20px">You're invited to ${clinicName}</h2>
+          <p style="margin:0 0 24px;color:#475569">
+            You have been invited to join <strong>${clinicName}</strong> as a
+            <strong>${roleName}</strong> on ClinicFlow AI PH.
+          </p>
+          <a href="${inviteUrl}"
+             style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px">
+            Accept Invitation
+          </a>
+          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">
+            This invitation expires in 7 days. If you did not expect this email, you can safely ignore it.
+          </p>
+        </div>
+      `
+    });
+
     revalidatePath("/settings/users");
     revalidatePath("/settings/audit-logs");
-    return { success: true, message: "Invite created." };
+    return { success: true, message: "Invite created and email sent." };
   } catch (error) {
     return toState(error);
   }
@@ -338,6 +371,126 @@ export async function deactivateUserAction(_: SettingsActionState, formData: For
     revalidatePath("/settings/users");
     revalidatePath("/settings/audit-logs");
     return { success: true, message: "User deactivated." };
+  } catch (error) {
+    return toState(error);
+  }
+}
+
+export async function cancelInviteAction(_: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
+  try {
+    const inviteId = formData.get("id");
+    if (!inviteId || typeof inviteId !== "string") {
+      return { message: "Invalid invite." };
+    }
+
+    const { user, clinicId } = await getOwnerContext();
+    const supabase = await createSupabaseServerClient();
+
+    const { error } = await supabase
+      .from("user_invites")
+      .update({ status: "revoked" })
+      .eq("id", inviteId)
+      .eq("clinic_id", clinicId)
+      .eq("status", "pending");
+
+    if (error) {
+      return { message: error.message };
+    }
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "user_invite.cancelled",
+      entityType: "user_invite",
+      entityId: inviteId
+    });
+
+    revalidatePath("/settings/users");
+    revalidatePath("/settings/audit-logs");
+    return { success: true, message: "Invite cancelled." };
+  } catch (error) {
+    return toState(error);
+  }
+}
+
+export async function resendInviteAction(_: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
+  try {
+    const inviteId = formData.get("id");
+    if (!inviteId || typeof inviteId !== "string") {
+      return { message: "Invalid invite." };
+    }
+
+    const { user, clinicId } = await getOwnerContext();
+    const supabase = await createSupabaseServerClient();
+
+    const { data: invite, error: fetchError } = await supabase
+      .from("user_invites")
+      .select("*")
+      .eq("id", inviteId)
+      .eq("clinic_id", clinicId)
+      .single<UserInvite>();
+
+    if (fetchError || !invite) {
+      return { message: fetchError?.message ?? "Invite not found." };
+    }
+
+    const newToken = randomBytes(32).toString("hex");
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error: updateError } = await supabase
+      .from("user_invites")
+      .update({ token: newToken, expires_at: newExpiresAt, status: "pending" })
+      .eq("id", inviteId)
+      .eq("clinic_id", clinicId);
+
+    if (updateError) {
+      return { message: updateError.message };
+    }
+
+    const { data: clinic } = await supabase
+      .from("clinics")
+      .select("name")
+      .eq("id", clinicId)
+      .single<Pick<Clinic, "name">>();
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const inviteUrl = `${appUrl}/register?token=${newToken}&email=${encodeURIComponent(invite.email)}`;
+    const clinicName = clinic?.name ?? "ClinicFlow AI PH";
+    const roleName = invite.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+
+    await sendResendEmail({
+      to: invite.email,
+      subject: `Reminder: You've been invited to join ${clinicName} on ClinicFlow AI PH`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e293b">
+          <h2 style="margin:0 0 8px;font-size:20px">Reminder: You're invited to ${clinicName}</h2>
+          <p style="margin:0 0 24px;color:#475569">
+            This is a reminder that you have been invited to join <strong>${clinicName}</strong> as a
+            <strong>${roleName}</strong> on ClinicFlow AI PH.
+          </p>
+          <a href="${inviteUrl}"
+             style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px">
+            Accept Invitation
+          </a>
+          <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">
+            This invitation expires in 7 days. If you did not expect this email, you can safely ignore it.
+          </p>
+        </div>
+      `
+    });
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "user_invite.resent",
+      entityType: "user_invite",
+      entityId: inviteId,
+      metadata: { email: invite.email, role: invite.role }
+    });
+
+    revalidatePath("/settings/users");
+    revalidatePath("/settings/audit-logs");
+    return { success: true, message: "Invite resent." };
   } catch (error) {
     return toState(error);
   }

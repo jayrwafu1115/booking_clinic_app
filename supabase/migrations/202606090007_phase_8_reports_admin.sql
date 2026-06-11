@@ -63,9 +63,11 @@ ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- subscription_plans: public read, super_admin write
+DROP POLICY IF EXISTS "Everyone can read plans" ON subscription_plans;
 CREATE POLICY "Everyone can read plans"
   ON subscription_plans FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Super admins manage plans" ON subscription_plans;
 CREATE POLICY "Super admins manage plans"
   ON subscription_plans FOR ALL
   USING (
@@ -76,6 +78,7 @@ CREATE POLICY "Super admins manage plans"
   );
 
 -- clinic_subscriptions: clinic_owner/staff can read their own, super_admin reads all
+DROP POLICY IF EXISTS "Clinic members read own subscription" ON clinic_subscriptions;
 CREATE POLICY "Clinic members read own subscription"
   ON clinic_subscriptions FOR SELECT
   USING (
@@ -89,6 +92,7 @@ CREATE POLICY "Clinic members read own subscription"
     )
   );
 
+DROP POLICY IF EXISTS "Super admins manage subscriptions" ON clinic_subscriptions;
 CREATE POLICY "Super admins manage subscriptions"
   ON clinic_subscriptions FOR ALL
   USING (

@@ -64,7 +64,8 @@ export async function getAllClinicsAdmin(): Promise<AdminClinicRow[]> {
   if (!user || !isSuperAdmin(profile)) return [];
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.rpc("get_all_clinics_admin");
+  const { data, error } = await supabase.rpc("get_all_clinics_admin");
+  if (error) console.error("[getAllClinicsAdmin]", error.code, error.message);
   return (data ?? []) as AdminClinicRow[];
 }
 

@@ -18,7 +18,8 @@ export function createOpenAiProvider(): AiProvider {
         throw new Error("OPENAI_API_KEY is required for the OpenAI AI provider.");
       }
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const baseUrl = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com").replace(/\/$/, "");
+      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,

@@ -5,6 +5,8 @@ import { getCurrentProfile } from "@/lib/auth/session";
 import { getClinicDetailsAdmin } from "@/server/queries/super-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminClinicStatusForm } from "@/components/admin/clinic-status-form";
+import { ConfirmActionForm } from "@/components/core/confirm-action-form";
+import { deleteClinicAction } from "@/server/actions/admin";
 
 export default async function AdminClinicDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentProfile();
@@ -26,9 +28,17 @@ export default async function AdminClinicDetailPage({ params }: { params: Promis
         <span className="text-sm font-medium text-slate-800">{clinic.name}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950">{clinic.name}</h1>
-        <p className="mt-1 text-sm text-slate-500">slug: {clinic.slug}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950">{clinic.name}</h1>
+          <p className="mt-1 text-sm text-slate-500">slug: {clinic.slug}</p>
+        </div>
+        <ConfirmActionForm
+          action={deleteClinicAction}
+          id={clinic.id}
+          label="Delete Clinic"
+          confirmMessage={`Permanently delete "${clinic.name}" and all its data (users, appointments, AI conversations)? This cannot be undone.`}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

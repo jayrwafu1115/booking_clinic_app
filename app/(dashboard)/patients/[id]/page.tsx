@@ -7,9 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deletePatientAction } from "@/server/actions/core";
 import { getPatientData } from "@/server/queries/core";
-import { formatManilaDate, titleize } from "@/lib/utils/format";
+import { formatManilaDate, formatManilaDateTime, titleize } from "@/lib/utils/format";
+import type { AppointmentStatus, AppointmentWithRelations } from "@/types/database";
 
 export const dynamic = "force-dynamic";
+
+const STATUS_STYLES: Record<AppointmentStatus, string> = {
+  booked:      "bg-blue-50 text-blue-700",
+  confirmed:   "bg-indigo-50 text-indigo-700",
+  checked_in:  "bg-purple-50 text-purple-700",
+  in_progress: "bg-yellow-50 text-yellow-700",
+  completed:   "bg-green-50 text-green-700",
+  cancelled:   "bg-slate-100 text-slate-500",
+  no_show:     "bg-red-50 text-red-600",
+};
+
+function AppointmentRow({ appt }: { appt: AppointmentWithRelations }) {
+  const label = appt.status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-border py-3 last:border-0">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-slate-800">
+          {appt.services?.name ?? "Unknown service"}
+        </p>
+        <p className="text-xs text-slate-500">
+          {formatManilaDateTime(appt.start_at)}
+          {appt.doctors ? ` · ${appt.doctors.full_name}` : ""}
+        </p>
+      </div>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[appt.status]}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default async function PatientProfilePage({ params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,11 +51,11 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
       return <AccessCard title="Patient unavailable" message="Sign in with a clinic account to view this record." />;
     }
 
-    const patient = data.patient;
+    const { patient, appointments } = data;
 
     return (
       <div className="space-y-6">
-        <ModuleHeader eyebrow="Patients" title={patient.full_name} description="Patient profile and future appointment history workspace." />
+        <ModuleHeader eyebrow="Patients" title={patient.full_name} description="Patient profile and appointment history." />
         <div className="flex flex-col gap-3 sm:flex-row">
           {data.canManage ? (
             <>
@@ -76,9 +107,24 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
               <CardTitle className="flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-blue-600" />
                 Appointment History
+                {appointments.length > 0 && (
+                  <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                    {appointments.length}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-sm leading-6 text-slate-600">Appointment history will appear here once scheduling is implemented.</CardContent>
+            <CardContent>
+              {appointments.length === 0 ? (
+                <p className="text-sm text-slate-500">No appointments on record.</p>
+              ) : (
+                <div>
+                  {appointments.map((appt) => (
+                    <AppointmentRow key={appt.id} appt={appt} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
           <Card>
             <CardHeader>
@@ -87,7 +133,9 @@ export default async function PatientProfilePage({ params }: { params: Promise<{
                 Medical / Treatment Notes
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-sm leading-6 text-slate-600">{patient.notes ?? "Treatment notes workspace placeholder."}</CardContent>
+            <CardContent className="text-sm leading-6 text-slate-600">
+              {patient.notes ?? <span className="text-slate-400">No notes recorded.</span>}
+            </CardContent>
           </Card>
         </section>
       </div>

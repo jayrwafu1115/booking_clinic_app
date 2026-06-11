@@ -61,7 +61,10 @@ export type SendAppointmentEmailParams = {
 };
 
 export async function sendAppointmentEmail(params: SendAppointmentEmailParams): Promise<void> {
-  if (!params.patientEmail) return;
+  if (!params.patientEmail) {
+    console.warn(`[sendAppointmentEmail] Skipped ${params.type} for appointment ${params.appointmentId} — no patient email on record.`);
+    return;
+  }
   if (!isNotificationEnabled(params.type, params.clinicSettings)) return;
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
@@ -218,7 +221,8 @@ export async function sendAppointmentEmailById(
       cancellationReason: overrides?.cancellationReason ?? appt.cancellation_reason,
       confirmationToken: appt.confirmation_token
     });
-  } catch {
-    // Email errors must never block appointment workflows
+  } catch (err) {
+    // Email errors must never block appointment workflows, but log for visibility
+    console.error("[sendAppointmentEmailById] Failed to send appointment email:", err);
   }
 }

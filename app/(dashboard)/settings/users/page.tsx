@@ -1,4 +1,5 @@
 import { DeactivateUserForm } from "@/components/settings/deactivate-user-form";
+import { InviteActions } from "@/components/settings/invite-actions";
 import { InviteUserForm } from "@/components/settings/invite-user-form";
 import { AccessCard } from "@/components/settings/access-card";
 import { SectionHeader } from "@/components/settings/section-header";
@@ -89,13 +90,20 @@ export default async function UsersPage() {
             <CardContent className="space-y-3">
               {data.invites.length === 0 ? <p className="text-sm text-slate-500">No invites created yet.</p> : null}
               {data.invites.map((invite) => (
-                <div key={invite.id} className="grid gap-2 rounded-2xl border border-border p-4 md:grid-cols-[1fr_auto_auto] md:items-center">
+                <div key={invite.id} className="grid gap-2 rounded-2xl border border-border p-4 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
                   <div>
                     <p className="text-sm font-semibold text-slate-950">{invite.email}</p>
                     <p className="mt-1 text-xs text-slate-400">Expires {formatDate(invite.expires_at)}</p>
                   </div>
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{roleLabel(invite.role)}</span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{roleLabel(invite.status)}</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invite.status === "pending" ? "bg-slate-100 text-slate-600" : invite.status === "accepted" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                    {roleLabel(invite.status)}
+                  </span>
+                  {invite.status === "pending" ? (
+                    <InviteActions inviteId={invite.id} />
+                  ) : (
+                    <div />
+                  )}
                 </div>
               ))}
             </CardContent>

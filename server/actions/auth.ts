@@ -6,7 +6,7 @@ import { DEFAULT_COUNTRY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { slugifyClinicName } from "@/lib/tenant/slug";
-import { forgotPasswordSchema, loginSchema, magicLinkSchema, registerSchema } from "@/lib/validations/auth";
+import { acceptInviteSchema, forgotPasswordSchema, loginSchema, magicLinkSchema, registerSchema } from "@/lib/validations/auth";
 
 type AuthState = {
   message?: string;
@@ -138,6 +138,77 @@ export async function forgotPasswordAction(_: AuthState, formData: FormData): Pr
   }
 
   return { success: true, message: "Password reset email sent." };
+}
+
+export async function acceptInviteAction(_: AuthState, formData: FormData): Promise<AuthState> {
+  const parsed = acceptInviteSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { message: parsed.error.errors[0]?.message ?? "Please complete all required fields." };
+  }
+
+  const { token, email, fullName, phone, password } = parsed.data;
+  const admin = createSupabaseAdminClient();
+
+  const { data: invite, error: inviteError } = await admin
+    .from("user_invites")
+    .select("*")
+    .eq("token", token)
+    .eq("email", email.toLowerCase())
+    .eq("status", "pending")
+    .single();
+
+  if (inviteError || !invite) {
+    return { message: "This invite link is invalid or has already been used." };
+  }
+
+  if (new Date(invite.expires_at) < new Date()) {
+    return { message: "This invite has expired. Ask the clinic owner to resend it." };
+  }
+
+  const { data: existing } = await admin.auth.admin.listUsers();
+  const alreadyExists = existing?.users?.some((u) => u.email?.toLowerCase() === email.toLowerCase());
+  if (alreadyExists) {
+    return { message: "An account with this email already exists. Please sign in instead." };
+  }
+
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email: email.toLowerCase(),
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, clinic_id: invite.clinic_id }
+  });
+
+  if (createError || !created.user) {
+    return { message: createError?.message ?? "Could not create account." };
+  }
+
+  const { error: profileError } = await admin.from("profiles").insert({
+    id: created.user.id,
+    clinic_id: invite.clinic_id,
+    role: invite.role,
+    full_name: fullName,
+    email: email.toLowerCase(),
+    phone: phone || null
+  });
+
+  if (profileError) {
+    return { message: profileError.message };
+  }
+
+  const { error: acceptError } = await admin
+    .from("user_invites")
+    .update({ status: "accepted" })
+    .eq("id", invite.id);
+
+  if (acceptError) {
+    return { message: acceptError.message };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password });
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
 
 export async function logoutAction() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, CalendarClock, Check, MessageCircle, Send, X } from "lucide-react";
+import { Bot, CalendarClock, CalendarDays, Check, MessageCircle, MessageSquare, Send, X } from "lucide-react";
 import type { PublicWidgetConfig, WidgetChatResponse, WidgetQuickReply, WidgetSlot } from "@/server/widget/chat";
 
 type WidgetMessage = {
@@ -61,14 +61,18 @@ function TypingIndicator() {
 
 export function BookingWidget({ clinic, settings, services }: BookingWidgetProps) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"booking" | "chat" | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [patientTempId, setPatientTempId] = useState<string | null>(null);
   const [messages, setMessages] = useState<WidgetMessage[]>([]);
   const [quickReplies, setQuickReplies] = useState<WidgetQuickReply[]>([]);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [slots, setSlots] = useState<WidgetSlot[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<WidgetSlot | null>(null);
+  const [needsPhoneLookup, setNeedsPhoneLookup] = useState(false);
   const [needsPatientDetails, setNeedsPatientDetails] = useState(false);
+  const [patientLookup, setPatientLookup] = useState<WidgetChatResponse["patientLookup"] | null>(null);
   const [appointmentSummary, setAppointmentSummary] = useState<WidgetChatResponse["appointment"] | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -96,7 +100,7 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, slots, needsPatientDetails]);
+  }, [messages, pending, slots, needsPhoneLookup, needsPatientDetails]);
 
   useEffect(() => {
     setQuickReplies(
@@ -131,8 +135,14 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
 
     setQuickReplies(response.quickReplies);
 
+    if (response.availableDates !== undefined) {
+      setAvailableDates(response.availableDates);
+      setSlots([]);
+    }
+
     if (response.slots !== undefined) {
       setSlots(response.slots);
+      setAvailableDates([]);
     }
 
     if (response.selectedServiceId) {
@@ -143,10 +153,22 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
       setSelectedSlot(response.selectedSlot);
     }
 
-    setNeedsPatientDetails(Boolean(response.needsPatientDetails));
+    if (response.needsPhoneLookup) {
+      setNeedsPhoneLookup(true);
+      setNeedsPatientDetails(false);
+      setPatientLookup(null);
+    } else if (response.needsPatientDetails) {
+      setNeedsPhoneLookup(false);
+      setNeedsPatientDetails(true);
+    }
+
+    if (response.patientLookup !== undefined) {
+      setPatientLookup(response.patientLookup);
+    }
 
     if (response.appointment) {
       setAppointmentSummary(response.appointment);
+      setAvailableDates([]);
       setSlots([]);
       setSelectedSlot(null);
       setNeedsPatientDetails(false);
@@ -197,13 +219,18 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
   }, [appendLocalMessage, applyResponse, clinic.slug, conversationId, patientTempId]);
 
   useEffect(() => {
-    if (!open || !patientTempId || conversationId || startRequestedRef.current) {
+    if (!open || !mode || !patientTempId || conversationId || startRequestedRef.current) {
       return;
     }
 
     startRequestedRef.current = true;
-    void postWidget({ type: "start" });
-  }, [conversationId, open, patientTempId, postWidget]);
+    void postWidget({ type: "start" }).then((response) => {
+      if (mode === "chat" && response) {
+        // In chat mode suppress service quick-replies so it stays conversational
+        setQuickReplies([]);
+      }
+    });
+  }, [conversationId, mode, open, patientTempId, postWidget]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -214,8 +241,11 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     }
 
     setInput("");
+    setAvailableDates([]);
     setSlots([]);
+    setNeedsPhoneLookup(false);
     setNeedsPatientDetails(false);
+    setPatientLookup(null);
     appendLocalMessage(content);
     await postWidget({ type: "message", content });
   }
@@ -226,6 +256,7 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     }
 
     setQuickReplies([]);
+    setAvailableDates([]);
     setSlots([]);
 
     if (reply.type === "service" && reply.serviceId) {
@@ -253,6 +284,30 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     });
   }
 
+  function formatDateButton(manilaDate: string) {
+    const [year, month, day] = manilaDate.split("-").map(Number);
+    return new Intl.DateTimeFormat("en-PH", { weekday: "short", month: "short", day: "numeric" }).format(
+      new Date(year, month - 1, day)
+    );
+  }
+
+  async function handleDateSelection(date: string) {
+    if (pending || !selectedServiceId) return;
+    setAvailableDates([]);
+    appendLocalMessage(`I'd like to book on ${formatDateButton(date)}.`);
+    await postWidget({ type: "select_date", serviceId: selectedServiceId, date });
+  }
+
+  async function handlePhoneLookup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    const formData = new FormData(event.currentTarget);
+    const phone = String(formData.get("phone") ?? "").trim();
+    if (!phone) return;
+    setNeedsPhoneLookup(false);
+    await postWidget({ type: "lookup_patient", phone });
+  }
+
   async function handleConfirmBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -261,9 +316,18 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     }
 
     const formData = new FormData(event.currentTarget);
-    const fullName = String(formData.get("fullName") ?? "").trim();
-    const phone = String(formData.get("phone") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+
+    let fullName: string;
+    let phone: string;
+
+    if (patientLookup) {
+      fullName = patientLookup.found ? patientLookup.patientName : String(formData.get("fullName") ?? "").trim();
+      phone = patientLookup.phone;
+    } else {
+      fullName = String(formData.get("fullName") ?? "").trim();
+      phone = String(formData.get("phone") ?? "").trim();
+    }
 
     if (!fullName || !phone) {
       setError("Patient name and phone are required.");
@@ -320,7 +384,7 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
                   type="button"
                   aria-label="Close booking chat"
                   title="Close"
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); setMode(null); startRequestedRef.current = false; setMessages([]); setConversationId(null); setQuickReplies([]); setAvailableDates([]); setSlots([]); setSelectedSlot(null); setNeedsPhoneLookup(false); setNeedsPatientDetails(false); setPatientLookup(null); setAppointmentSummary(null); }}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/60"
                 >
                   <X className="h-4 w-4" />
@@ -328,7 +392,46 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
               </header>
 
               <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                {messages.length === 0 && !pending ? (
+                {!mode ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-5 py-6">
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-slate-800">How can we help you?</p>
+                      <p className="mt-1 text-xs text-slate-500">Choose an option to get started</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMode("booking")}
+                      className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-blue-100 transition hover:ring-blue-400"
+                    >
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        <CalendarClock className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Book an appointment</p>
+                        <p className="text-xs text-slate-500">Check availability and schedule a visit</p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("chat")}
+                      className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-blue-100 transition hover:ring-blue-400"
+                    >
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        <MessageSquare className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Chat with AI assistant</p>
+                        <p className="text-xs text-slate-500">Ask questions about services, prices, and more</p>
+                      </div>
+                    </button>
+                  </div>
+                ) : messages.length === 0 && !pending ? (
                   <div className="rounded-2xl bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm ring-1 ring-blue-100">
                     {settings.ai_welcome_message}
                   </div>
@@ -351,7 +454,7 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
 
                 {pending ? <TypingIndicator /> : null}
 
-                {quickReplies.length > 0 && !appointmentSummary ? (
+                {mode && quickReplies.length > 0 && !appointmentSummary ? (
                   <div className="flex flex-wrap gap-2">
                     {quickReplies.map((reply) => (
                       <button
@@ -363,6 +466,26 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
                         {reply.label}
                       </button>
                     ))}
+                  </div>
+                ) : null}
+
+                {availableDates.length > 0 && !appointmentSummary ? (
+                  <div className="space-y-2">
+                    <p className="px-1 text-xs font-semibold text-slate-500">Select a date</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableDates.map((date) => (
+                        <button
+                          key={date}
+                          type="button"
+                          onClick={() => void handleDateSelection(date)}
+                          disabled={pending}
+                          className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100 transition hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          {formatDateButton(date)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -382,28 +505,44 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
                   </div>
                 ) : null}
 
-                {needsPatientDetails && selectedSlot ? (
+                {needsPhoneLookup && selectedSlot ? (
+                  <form onSubmit={handlePhoneLookup} className="space-y-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-blue-100">
+                    <p className="text-sm font-semibold text-slate-950">What&apos;s your phone number?</p>
+                    <input
+                      name="phone"
+                      placeholder="e.g. 09171234567"
+                      className="h-10 w-full rounded-xl border border-blue-100 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      className="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      Continue
+                    </button>
+                  </form>
+                ) : null}
+
+                {needsPatientDetails && selectedSlot && patientLookup ? (
                   <form onSubmit={handleConfirmBooking} className="space-y-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-blue-100">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
                       <Check className="h-4 w-4 text-blue-600" />
-                      Confirm appointment
+                      {patientLookup.found ? `Confirming for ${patientLookup.patientName}` : "Complete your details"}
                     </div>
-                    <input
-                      name="fullName"
-                      placeholder="Patient full name"
-                      className="h-10 w-full rounded-xl border border-blue-100 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      required
-                    />
-                    <input
-                      name="phone"
-                      placeholder="Phone number"
-                      className="h-10 w-full rounded-xl border border-blue-100 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      required
-                    />
+                    {!patientLookup.found && (
+                      <input
+                        name="fullName"
+                        placeholder="Full name"
+                        className="h-10 w-full rounded-xl border border-blue-100 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        required
+                      />
+                    )}
                     <input
                       name="email"
                       type="email"
-                      placeholder="Email optional"
+                      placeholder="Email (optional)"
                       className="h-10 w-full rounded-xl border border-blue-100 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
                     <button
@@ -436,13 +575,13 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
                   rows={1}
                   placeholder="Type your message..."
                   className="max-h-24 min-h-11 flex-1 resize-none rounded-2xl border border-blue-100 px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  disabled={pending || Boolean(appointmentSummary)}
+                  disabled={!mode || pending || Boolean(appointmentSummary) || needsPhoneLookup || needsPatientDetails}
                 />
                 <button
                   type="submit"
                   aria-label="Send message"
                   title="Send"
-                  disabled={pending || !input.trim() || Boolean(appointmentSummary)}
+                  disabled={!mode || pending || !input.trim() || Boolean(appointmentSummary) || needsPhoneLookup || needsPatientDetails}
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white transition hover:brightness-95 disabled:opacity-50"
                   style={{ backgroundColor: primaryColor }}
                 >

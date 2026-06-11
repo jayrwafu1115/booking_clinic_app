@@ -30,4 +30,6 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-export { Dialog, DialogTrigger, DialogContent, DialogClose };
+const DialogTitle = DialogPrimitive.Title;
+
+export { Dialog, DialogTrigger, DialogContent, DialogClose, DialogTitle };

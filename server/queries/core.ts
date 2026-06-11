@@ -1,7 +1,7 @@
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { hasPermission, profileHasPermission } from "@/lib/auth/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AvailabilityRule, BlockedDate, Doctor, Patient, Profile, Service } from "@/types/database";
+import type { AppointmentWithRelations, AvailabilityRule, BlockedDate, Doctor, Patient, Profile, Service } from "@/types/database";
 
 export type AccessContext = {
   profile: Profile;
@@ -76,20 +76,37 @@ export async function getPatientsData(searchParams?: { q?: string; page?: string
   };
 }
 
-export async function getPatientData(id: string): Promise<{ profile: Profile; patient: Patient; canManage: boolean } | null> {
+export async function getPatientData(
+  id: string
+): Promise<{ profile: Profile; patient: Patient; appointments: AppointmentWithRelations[]; canManage: boolean } | null> {
   const context = await getAccessContext("patients:view");
   if (!context) {
     return null;
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("patients").select("*").eq("clinic_id", context.clinicId).eq("id", id).single<Patient>();
+  const [patientResult, appointmentsResult] = await Promise.all([
+    supabase.from("patients").select("*").eq("clinic_id", context.clinicId).eq("id", id).single<Patient>(),
+    supabase
+      .from("appointments")
+      .select("*, doctors(id,full_name,specialization), services(id,name,duration_minutes,price_centavos,color), patients(id,full_name,phone,email)")
+      .eq("clinic_id", context.clinicId)
+      .eq("patient_id", id)
+      .order("start_at", { ascending: false })
+      .limit(50)
+      .returns<AppointmentWithRelations[]>()
+  ]);
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "Patient not found.");
+  if (patientResult.error || !patientResult.data) {
+    throw new Error(patientResult.error?.message ?? "Patient not found.");
   }
 
-  return { profile: context.profile, patient: data, canManage: profileHasPermission(context.profile, "patients:manage") };
+  return {
+    profile: context.profile,
+    patient: patientResult.data,
+    appointments: appointmentsResult.data ?? [],
+    canManage: profileHasPermission(context.profile, "patients:manage")
+  };
 }
 
 export async function getDoctorsData(): Promise<{ profile: Profile; doctors: Doctor[]; doctorProfiles: Profile[]; canManage: boolean } | null> {

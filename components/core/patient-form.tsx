@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { AuthStatus } from "@/components/forms/auth-status";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/core/form-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -108,7 +110,10 @@ export function PatientForm({ patient }: { patient?: Patient }) {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button variant="outline" asChild>
+          <Link href={patient ? `/patients/${patient.id}` : "/patients"}>Cancel</Link>
+        </Button>
         <SubmitButton className="w-full sm:w-auto">{patient ? "Save patient" : "Create patient"}</SubmitButton>
       </div>
     </form>

@@ -20,3 +20,11 @@ export const registerSchema = z.object({
 export const forgotPasswordSchema = z.object({
   email: z.string().email()
 });
+
+export const acceptInviteSchema = z.object({
+  token: z.string().min(1),
+  email: z.string().email(),
+  fullName: z.string().min(2).max(120),
+  phone: z.string().optional(),
+  password: z.string().min(8)
+});
