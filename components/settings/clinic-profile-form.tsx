@@ -117,6 +117,37 @@ export function ClinicProfileForm({
 
         <Card>
           <CardHeader>
+            <CardTitle>Public Website Content</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Hero banner images (one URL per line, up to 5 — shown as a carousel)</Label>
+              <textarea
+                name="heroImageUrls"
+                defaultValue={(clinic.hero_image_urls ?? []).join("\n")}
+                rows={4}
+                spellCheck={false}
+                placeholder={"https://...\nhttps://..."}
+                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            <Field label="Facebook page URL">
+              <Input name="facebookUrl" defaultValue={clinic.facebook_url ?? ""} placeholder="https://facebook.com/..." />
+            </Field>
+            <Field label="Instagram URL">
+              <Input name="instagramUrl" defaultValue={clinic.instagram_url ?? ""} placeholder="https://instagram.com/..." />
+            </Field>
+            <Field label="TikTok URL">
+              <Input name="tiktokUrl" defaultValue={clinic.tiktok_url ?? ""} placeholder="https://tiktok.com/@..." />
+            </Field>
+            <Field label="YouTube URL">
+              <Input name="youtubeUrl" defaultValue={clinic.youtube_url ?? ""} placeholder="https://youtube.com/@..." />
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Compliance & Defaults</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">

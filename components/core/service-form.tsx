@@ -47,6 +47,11 @@ export function ServiceForm({ service }: { service?: Service | null }) {
             <Input name="icon" defaultValue={service?.icon ?? ""} placeholder="stethoscope, tooth, sparkle..." />
           </FormField>
           <div className="md:col-span-2">
+            <FormField label="Image (shown on the public website)">
+              <Input name="imageUrl" defaultValue={service?.image_url ?? ""} placeholder="https://..." />
+            </FormField>
+          </div>
+          <div className="md:col-span-2">
             <FormField label="Description">
               <textarea
                 name="description"

@@ -19,6 +19,11 @@ export type Clinic = {
   timezone: "Asia/Manila";
   logo_url: string | null;
   primary_color: string;
+  hero_image_urls: string[];
+  facebook_url: string | null;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  youtube_url: string | null;
   status: "active" | "inactive" | "suspended";
   created_at: string;
   updated_at: string;
@@ -144,6 +149,7 @@ export type Service = {
   price_centavos: number;
   color: string;
   icon: string | null;
+  image_url: string | null;
   online_booking_enabled: boolean;
   active: boolean;
   created_at: string;

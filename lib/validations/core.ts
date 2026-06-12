@@ -54,6 +54,7 @@ export const serviceSchema = z.object({
   pricePesos: z.coerce.number().min(0).max(999999).transform((value) => Math.round(value * 100)),
   color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
   icon: optionalText,
+  imageUrl: optionalText,
   onlineBookingEnabled: z.enum(["on"]).optional().transform((value) => value === "on"),
   active: z.enum(["on"]).optional().transform((value) => value === "on")
 });

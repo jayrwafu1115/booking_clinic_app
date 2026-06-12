@@ -138,6 +138,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Up to 50 doctors",
     "Everything in Pro",
     "Custom AI instructions",
+    "Public clinic website",
   ],
 };
 

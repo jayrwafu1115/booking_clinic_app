@@ -26,6 +26,20 @@ export const clinicProfileSchema = z.object({
   postalCode: optionalText,
   logoUrl: optionalText,
   primaryColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/),
+  heroImageUrls: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 5)
+    ),
+  facebookUrl: optionalText,
+  instagramUrl: optionalText,
+  tiktokUrl: optionalText,
+  youtubeUrl: optionalText,
   prcNumber: optionalText,
   ptrNumber: optionalText,
   tin: optionalText,

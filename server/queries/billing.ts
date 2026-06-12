@@ -69,33 +69,37 @@ export type ClinicPlanFeatures = {
   aiEnabled: boolean;
   maxUsers: number;
   maxDoctors: number;
+  publicWebsiteEnabled: boolean;
   subscriptionStatus: string;
 };
 
 export const getClinicPlanFeatures = cache(async (): Promise<ClinicPlanFeatures> => {
   const profile = await getCurrentProfile();
   if (!profile?.clinic_id) {
-    return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, subscriptionStatus: "none" };
+    return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, publicWebsiteEnabled: false, subscriptionStatus: "none" };
   }
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("clinic_subscriptions")
-    .select("status, plan:subscription_plans(ai_enabled, max_users, max_doctors)")
+    .select("status, plan:subscription_plans(ai_enabled, max_users, max_doctors, features)")
     .eq("clinic_id", profile.clinic_id)
     .maybeSingle<{
       status: string;
-      plan: { ai_enabled: boolean; max_users: number; max_doctors: number } | null;
+      plan: { ai_enabled: boolean; max_users: number; max_doctors: number; features: string[] } | null;
     }>();
 
   const status = data?.status ?? "none";
   const isTrial = status === "trial";
   const isBlocked = status === "cancelled" || status === "suspended";
+  const planHasPublicWebsite = (data?.plan?.features ?? []).includes("public_website");
 
   return {
     aiEnabled: isBlocked ? false : isTrial ? true : (data?.plan?.ai_enabled ?? false),
     maxUsers: data?.plan?.max_users ?? 5,
     maxDoctors: data?.plan?.max_doctors ?? 2,
+    // Paid subscriptions only — trials never get the public website.
+    publicWebsiteEnabled: status === "active" && planHasPublicWebsite,
     subscriptionStatus: status,
   };
 });

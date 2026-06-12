@@ -81,6 +81,11 @@ export async function updateClinicProfileAction(_: SettingsActionState, formData
         postal_code: parsed.data.postalCode,
         logo_url: parsed.data.logoUrl,
         primary_color: parsed.data.primaryColor,
+        hero_image_urls: parsed.data.heroImageUrls,
+        facebook_url: parsed.data.facebookUrl,
+        instagram_url: parsed.data.instagramUrl,
+        tiktok_url: parsed.data.tiktokUrl,
+        youtube_url: parsed.data.youtubeUrl,
         timezone: DEFAULT_TIMEZONE,
         country: "Philippines"
       })

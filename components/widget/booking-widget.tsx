@@ -11,7 +11,10 @@ type WidgetMessage = {
   createdAt: string;
 };
 
-type BookingWidgetProps = PublicWidgetConfig;
+type BookingWidgetProps = PublicWidgetConfig & {
+  /** True when rendered inside another page (e.g. the public clinic site) instead of the standalone /widget iframe page. */
+  embedded?: boolean;
+};
 
 function initials(name: string) {
   return name
@@ -59,7 +62,7 @@ function TypingIndicator() {
   );
 }
 
-export function BookingWidget({ clinic, settings, services }: BookingWidgetProps) {
+export function BookingWidget({ clinic, settings, services, embedded = false }: BookingWidgetProps) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"booking" | "chat" | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -83,13 +86,15 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
   const storageKey = useMemo(() => `clinicflow-widget:${clinic.slug}:patient-temp-id`, [clinic.slug]);
 
   useEffect(() => {
+    if (embedded) return;
+
     const previousBackground = document.body.style.background;
     document.body.style.background = "transparent";
 
     return () => {
       document.body.style.background = previousBackground;
     };
-  }, []);
+  }, [embedded]);
 
   useEffect(() => {
     const existing = window.localStorage.getItem(storageKey);
@@ -97,6 +102,12 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     window.localStorage.setItem(storageKey, next);
     setPatientTempId(next);
   }, [storageKey]);
+
+  useEffect(() => {
+    const openWidget = () => setOpen(true);
+    window.addEventListener("clinicflow:open-widget", openWidget);
+    return () => window.removeEventListener("clinicflow:open-widget", openWidget);
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -345,6 +356,8 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
   }
 
   if (!settings.ai_enabled || !settings.ai_widget_enabled) {
+    if (embedded) return null;
+
     return (
       <main className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="max-w-sm rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-2xl ring-1 ring-blue-100">
@@ -354,8 +367,10 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
     );
   }
 
+  const Wrapper = embedded ? "div" : "main";
+
   return (
-    <main className="min-h-screen bg-transparent">
+    <Wrapper className={embedded ? undefined : "min-h-screen bg-transparent"}>
       <div className="pointer-events-none fixed inset-0 z-50">
         {!open ? (
           <button
@@ -592,6 +607,6 @@ export function BookingWidget({ clinic, settings, services }: BookingWidgetProps
           </section>
         )}
       </div>
-    </main>
+    </Wrapper>
   );
 }

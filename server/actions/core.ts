@@ -379,6 +379,7 @@ export async function createServiceAction(_: CoreActionState, formData: FormData
         price_centavos: parsed.data.pricePesos,
         color: parsed.data.color,
         icon: parsed.data.icon,
+        image_url: parsed.data.imageUrl,
         online_booking_enabled: parsed.data.onlineBookingEnabled,
         active: parsed.data.active
       })
@@ -424,6 +425,7 @@ export async function updateServiceAction(_: CoreActionState, formData: FormData
         price_centavos: parsed.data.pricePesos,
         color: parsed.data.color,
         icon: parsed.data.icon,
+        image_url: parsed.data.imageUrl,
         online_booking_enabled: parsed.data.onlineBookingEnabled,
         active: parsed.data.active
       })
