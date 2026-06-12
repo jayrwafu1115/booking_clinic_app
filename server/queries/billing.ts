@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ClinicSubscription, SubscriptionPlan, Clinic } from "@/types/database";
@@ -71,7 +72,7 @@ export type ClinicPlanFeatures = {
   subscriptionStatus: string;
 };
 
-export async function getClinicPlanFeatures(): Promise<ClinicPlanFeatures> {
+export const getClinicPlanFeatures = cache(async (): Promise<ClinicPlanFeatures> => {
   const profile = await getCurrentProfile();
   if (!profile?.clinic_id) {
     return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, subscriptionStatus: "none" };
@@ -87,13 +88,15 @@ export async function getClinicPlanFeatures(): Promise<ClinicPlanFeatures> {
       plan: { ai_enabled: boolean; max_users: number; max_doctors: number } | null;
     }>();
 
+  const isTrial = data?.status === "trial";
+
   return {
-    aiEnabled: data?.plan?.ai_enabled ?? false,
+    aiEnabled: isTrial ? true : (data?.plan?.ai_enabled ?? false),
     maxUsers: data?.plan?.max_users ?? 5,
     maxDoctors: data?.plan?.max_doctors ?? 2,
     subscriptionStatus: data?.status ?? "none",
   };
-}
+});
 
 export async function getPaymentsData(): Promise<PaymentsData | null> {
   const profile = await getCurrentProfile();

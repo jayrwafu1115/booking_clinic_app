@@ -9,6 +9,7 @@ import { sendResendEmail } from "@/lib/notifications/resend";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clinicProfileSchema, deactivateUserSchema, inviteUserSchema, notificationPreferencesSchema, updateUserRoleSchema } from "@/lib/validations/settings";
 import { createAuditLog } from "@/server/audit/create-audit-log";
+import { getClinicPlanFeatures } from "@/server/queries/billing";
 import type { Clinic, Profile, UserInvite } from "@/types/database";
 
 type SettingsActionState = {
@@ -137,6 +138,22 @@ export async function inviteUserAction(_: SettingsActionState, formData: FormDat
 
     const { user, clinicId } = await getOwnerContext();
     const supabase = await createSupabaseServerClient();
+
+    const [planFeatures, { count: userCount }] = await Promise.all([
+      getClinicPlanFeatures(),
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinicId)
+        .neq("status", "inactive")
+    ]);
+
+    if (userCount !== null && userCount >= planFeatures.maxUsers) {
+      return {
+        message: `Your plan allows a maximum of ${planFeatures.maxUsers} users. Upgrade your plan to invite more team members.`
+      };
+    }
+
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 

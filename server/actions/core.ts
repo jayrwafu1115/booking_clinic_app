@@ -17,6 +17,7 @@ import {
   serviceSchema
 } from "@/lib/validations/core";
 import { createAuditLog } from "@/server/audit/create-audit-log";
+import { getClinicPlanFeatures } from "@/server/queries/billing";
 import type { Permission } from "@/lib/auth/permissions";
 
 type CoreActionState = {
@@ -219,6 +220,21 @@ export async function createDoctorAction(_: CoreActionState, formData: FormData)
 
     const { user, clinicId } = await getActionContext("doctors:manage");
     const supabase = await createSupabaseServerClient();
+
+    const [planFeatures, { count: doctorCount }] = await Promise.all([
+      getClinicPlanFeatures(),
+      supabase
+        .from("doctors")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinicId)
+        .eq("active", true)
+    ]);
+
+    if (doctorCount !== null && doctorCount >= planFeatures.maxDoctors) {
+      return {
+        message: `Your plan allows a maximum of ${planFeatures.maxDoctors} doctors. Upgrade your plan to add more doctors.`
+      };
+    }
 
     if (parsed.data.profileId) {
       const { count, error: profileError } = await supabase

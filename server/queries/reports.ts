@@ -3,19 +3,7 @@ import { profileHasPermission } from "@/lib/auth/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ResolvedDateRange } from "@/lib/utils/date-ranges";
 
-// ─── Clinic Reports ───────────────────────────────────────────────────────────
-
-type AppointmentRow = {
-  id: string;
-  status: string;
-  source: string;
-  patient_id: string;
-  doctor_id: string | null;
-  service_id: string | null;
-  start_at: string;
-  services: { name: string; price_centavos: number } | null;
-  doctors: { full_name: string } | null;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ServiceStat = {
   serviceId: string;
@@ -69,6 +57,25 @@ export type ClinicReportResult = {
   dateRange: ResolvedDateRange;
 };
 
+// ─── Internal RPC shape ───────────────────────────────────────────────────────
+
+type AppointmentStats = {
+  total: number;
+  completed: number;
+  confirmed: number;
+  cancelled: number;
+  no_show: number;
+  booked: number;
+  revenue_centavos: number;
+  ai_sourced: number;
+  widget_sourced: number;
+  manual_sourced: number;
+  status_breakdown: { status: string; count: number }[];
+  source_breakdown: { source: string; count: number }[];
+  top_services: { service_id: string; service_name: string; count: number; revenue_centavos: number }[];
+  doctor_stats: { doctor_id: string; doctor_name: string; total: number; completed: number }[];
+};
+
 const STATUS_COLORS: Record<string, string> = {
   booked: "#2563eb",
   confirmed: "#16a34a",
@@ -78,6 +85,8 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "#dc2626",
   no_show: "#ea580c"
 };
+
+// ─── Query ────────────────────────────────────────────────────────────────────
 
 export async function getClinicReports(dateRange: ResolvedDateRange): Promise<ClinicReportResult | null> {
   const user = await getCurrentUser();
@@ -90,17 +99,21 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
   const clinicId = profile.clinic_id;
   const supabase = await createSupabaseServerClient();
 
-  // Fetch all appointments in the date range with service + doctor info
-  const [appointmentsResult, newPatientsResult, totalPatientsResult, conversationsResult] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select("id, status, source, patient_id, doctor_id, service_id, start_at, services(name, price_centavos), doctors(full_name)")
-      .eq("clinic_id", clinicId)
-      .gte("start_at", dateRange.start)
-      .lt("start_at", dateRange.end)
-      .order("start_at", { ascending: true })
-      .limit(5000)
-      .returns<AppointmentRow[]>(),
+  // All six queries run in parallel — no sequential awaits.
+  const [
+    statsResult,
+    newPatientsResult,
+    totalPatientsResult,
+    conversationsResult,
+    msgCountResult,
+    msgMetaResult
+  ] = await Promise.all([
+    // DB-side aggregation replaces the previous 5 000-row raw fetch.
+    supabase.rpc("get_clinic_appointment_stats", {
+      p_clinic_id: clinicId,
+      p_start_at: dateRange.start,
+      p_end_at: dateRange.end
+    }),
 
     supabase
       .from("patients")
@@ -121,138 +134,48 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
       .gte("created_at", dateRange.start)
       .lt("created_at", dateRange.end)
       .limit(2000)
-      .returns<{ id: string; status: string; metadata: Record<string, unknown> }[]>()
+      .returns<{ id: string; status: string; metadata: Record<string, unknown> }[]>(),
+
+    // These two were previously sequential — now parallel.
+    supabase
+      .from("ai_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("clinic_id", clinicId)
+      .gte("created_at", dateRange.start)
+      .lt("created_at", dateRange.end),
+
+    supabase
+      .from("ai_messages")
+      .select("metadata")
+      .eq("clinic_id", clinicId)
+      .eq("role", "assistant")
+      .gte("created_at", dateRange.start)
+      .lt("created_at", dateRange.end)
+      .limit(2000)
+      .returns<{ metadata: Record<string, unknown> }[]>()
   ]);
 
-  const rows = appointmentsResult.data ?? [];
+  const stats = statsResult.data as AppointmentStats | null;
+  if (!stats) return null;
 
-  // Status counts
-  const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.status] = (acc[row.status] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const completed = byStatus["completed"] ?? 0;
-  const cancelled = byStatus["cancelled"] ?? 0;
-  const noShow = byStatus["no_show"] ?? 0;
-  const confirmed = byStatus["confirmed"] ?? 0;
-  const booked = byStatus["booked"] ?? 0;
-
-  // Revenue from completed appointments
-  const revenueCentavos = rows
-    .filter((row) => row.status === "completed" && row.services)
-    .reduce((sum, row) => sum + (row.services?.price_centavos ?? 0), 0);
-
-  // Source breakdown
-  const bySource = rows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.source] = (acc[row.source] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const aiSourced = (bySource["ai"] ?? 0) + (bySource["widget"] ?? 0);
-  const widgetSourced = bySource["widget"] ?? 0;
-  const manualSourced = bySource["manual"] ?? 0;
-
-  // Top services
-  const serviceMap = new Map<string, ServiceStat>();
-  for (const row of rows) {
-    if (!row.service_id || !row.services) continue;
-    const existing = serviceMap.get(row.service_id);
-    if (existing) {
-      existing.count += 1;
-      if (row.status === "completed") existing.revenueCentavos += row.services.price_centavos;
-    } else {
-      serviceMap.set(row.service_id, {
-        serviceId: row.service_id,
-        serviceName: row.services.name,
-        count: 1,
-        revenueCentavos: row.status === "completed" ? row.services.price_centavos : 0
-      });
-    }
-  }
-  const topServices = Array.from(serviceMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
-
-  // Doctor stats
-  const doctorMap = new Map<string, DoctorStat>();
-  for (const row of rows) {
-    if (!row.doctor_id || !row.doctors) continue;
-    const existing = doctorMap.get(row.doctor_id);
-    if (existing) {
-      existing.total += 1;
-      if (row.status === "completed") existing.completed += 1;
-    } else {
-      doctorMap.set(row.doctor_id, {
-        doctorId: row.doctor_id,
-        doctorName: row.doctors.full_name,
-        total: 1,
-        completed: row.status === "completed" ? 1 : 0
-      });
-    }
-  }
-  const doctorStats = Array.from(doctorMap.values()).sort((a, b) => b.total - a.total);
-
-  // Status breakdown for chart
-  const statusBreakdown = Object.entries(byStatus)
-    .map(([status, count]) => ({
-      name: status.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase()),
-      count,
-      fill: STATUS_COLORS[status] ?? "#94a3b8"
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  // Source breakdown for display
-  const sourceBreakdown = Object.entries(bySource)
-    .map(([source, count]) => ({
-      name: source.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase()),
-      count
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  // AI conversation stats
+  // ── Conversation stats ──────────────────────────────────────────────────────
   const conversations = conversationsResult.data ?? [];
   const byConvStatus = conversations.reduce<Record<string, number>>((acc, c) => {
     acc[c.status] = (acc[c.status] ?? 0) + 1;
     return acc;
   }, {});
 
+  const totalConversations = conversations.length;
   const bookedConversations = byConvStatus["booked"] ?? 0;
   const handoffConversations = byConvStatus["handoff"] ?? 0;
-  const totalConversations = conversations.length;
 
-  // Average messages per conversation — fetch from a count query
-  let avgMessages = 0;
-  if (totalConversations > 0) {
-    const { count } = await supabase
-      .from("ai_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("clinic_id", clinicId)
-      .gte("created_at", dateRange.start)
-      .lt("created_at", dateRange.end);
-    avgMessages = Math.round(((count ?? 0) / totalConversations) * 10) / 10;
-  }
-
-  // Top message sources (from metadata)
-  const msgSourceCount: Record<string, number> = {};
-  for (const conv of conversations) {
-    const src = String((conv.metadata as Record<string, unknown>)?.booking_stage ?? "unknown");
-    msgSourceCount[src] = (msgSourceCount[src] ?? 0) + 1;
-  }
-
-  // Fetch ai_messages metadata sources for this clinic+period to classify responses
-  const { data: msgMetaRows } = await supabase
-    .from("ai_messages")
-    .select("metadata")
-    .eq("clinic_id", clinicId)
-    .eq("role", "assistant")
-    .gte("created_at", dateRange.start)
-    .lt("created_at", dateRange.end)
-    .limit(2000)
-    .returns<{ metadata: Record<string, unknown> }[]>();
+  const avgMessages =
+    totalConversations > 0
+      ? Math.round(((msgCountResult.count ?? 0) / totalConversations) * 10) / 10
+      : 0;
 
   const sourceCount: Record<string, number> = {};
-  for (const row of msgMetaRows ?? []) {
+  for (const row of msgMetaResult.data ?? []) {
     const src = String(row.metadata?.source ?? "other");
     sourceCount[src] = (sourceCount[src] ?? 0) + 1;
   }
@@ -262,21 +185,49 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
-  const handoffRate = totalConversations > 0 ? Math.round((handoffConversations / totalConversations) * 1000) / 10 : 0;
-  const aiConversionRate = totalConversations > 0 ? Math.round((bookedConversations / totalConversations) * 1000) / 10 : 0;
+  const handoffRate =
+    totalConversations > 0 ? Math.round((handoffConversations / totalConversations) * 1000) / 10 : 0;
+  const aiConversionRate =
+    totalConversations > 0 ? Math.round((bookedConversations / totalConversations) * 1000) / 10 : 0;
+
+  // ── Map RPC results to exported types ──────────────────────────────────────
+  const statusBreakdown = (stats.status_breakdown ?? []).map(({ status, count }) => ({
+    name: status.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase()),
+    count,
+    fill: STATUS_COLORS[status] ?? "#94a3b8"
+  }));
+
+  const sourceBreakdown = (stats.source_breakdown ?? []).map(({ source, count }) => ({
+    name: source.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase()),
+    count
+  }));
+
+  const topServices: ServiceStat[] = (stats.top_services ?? []).map((s) => ({
+    serviceId: s.service_id,
+    serviceName: s.service_name,
+    count: s.count,
+    revenueCentavos: s.revenue_centavos
+  }));
+
+  const doctorStats: DoctorStat[] = (stats.doctor_stats ?? []).map((d) => ({
+    doctorId: d.doctor_id,
+    doctorName: d.doctor_name,
+    total: d.total,
+    completed: d.completed
+  }));
 
   return {
     appointments: {
-      total: rows.length,
-      completed,
-      confirmed,
-      cancelled,
-      noShow,
-      booked,
-      revenueCentavos,
-      aiSourced,
-      widgetSourced,
-      manualSourced,
+      total: stats.total,
+      completed: stats.completed,
+      confirmed: stats.confirmed,
+      cancelled: stats.cancelled,
+      noShow: stats.no_show,
+      booked: stats.booked,
+      revenueCentavos: stats.revenue_centavos,
+      aiSourced: stats.ai_sourced,
+      widgetSourced: stats.widget_sourced,
+      manualSourced: stats.manual_sourced,
       newPatients: newPatientsResult.count ?? 0,
       totalPatients: totalPatientsResult.count ?? 0,
       topServices,

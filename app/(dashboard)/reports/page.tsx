@@ -14,6 +14,7 @@ import {
 import { getCurrentProfile } from "@/lib/auth/session";
 import { profileHasPermission } from "@/lib/auth/permissions";
 import { getClinicReports } from "@/server/queries/reports";
+import { getClinicPlanFeatures } from "@/server/queries/billing";
 import { getDateRangeFromParams } from "@/lib/utils/date-ranges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -50,9 +51,13 @@ export default async function ReportsPage({
   if (!profile) redirect("/login");
   if (!profileHasPermission(profile, "appointments:view_all")) redirect("/dashboard");
 
+
   const { period, from, to } = await searchParams;
   const dateRange = getDateRangeFromParams(period, from, to);
-  const data = await getClinicReports(dateRange);
+  const [data, { aiEnabled }] = await Promise.all([
+    getClinicReports(dateRange),
+    getClinicPlanFeatures()
+  ]);
 
   if (!data) {
     return (
@@ -134,12 +139,14 @@ export default async function ReportsPage({
             detail="All time in clinic"
             icon={Users}
           />
-          <StatCard
-            label="AI-Generated Bookings"
-            value={appt.aiSourced.toLocaleString()}
-            detail={`${pct(appt.aiSourced, appt.total)} of total bookings`}
-            icon={Zap}
-          />
+          {aiEnabled && (
+            <StatCard
+              label="AI-Generated Bookings"
+              value={appt.aiSourced.toLocaleString()}
+              detail={`${pct(appt.aiSourced, appt.total)} of total bookings`}
+              icon={Zap}
+            />
+          )}
         </div>
       </section>
 
@@ -249,82 +256,83 @@ export default async function ReportsPage({
         </Card>
       )}
 
-      {/* ─── AI Analytics ─────────────────────────────────────────── */}
-      <section>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
-          AI Assistant Analytics
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Conversations"
-            value={ai.totalConversations.toLocaleString()}
-            detail={`${dateRange.label}`}
-            icon={Bot}
-          />
-          <StatCard
-            label="Bookings via AI"
-            value={ai.bookingsGenerated.toLocaleString()}
-            detail={`Conversion rate: ${ai.aiConversionRate}%`}
-            icon={TrendingUp}
-          />
-          <StatCard
-            label="Human Handoffs"
-            value={ai.handoffConversations.toLocaleString()}
-            detail={`Handoff rate: ${ai.handoffRate}%`}
-            icon={UserCheck}
-          />
-          <StatCard
-            label="Avg Messages / Conv"
-            value={ai.avgMessagesPerConversation.toString()}
-            detail="Per AI conversation"
-            icon={Activity}
-          />
-        </div>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">AI Conversation Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AiConversationStatusChart data={ai} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top AI Response Sources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TopMessageSourcesChart data={ai.topMessageSources} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ─── AI Summary table ─────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">AI Conversation Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { label: "Open Conversations", value: ai.openConversations },
-              { label: "Booked via AI", value: ai.bookedConversations },
-              { label: "Handed off to Staff", value: ai.handoffConversations },
-              { label: "Closed Conversations", value: ai.closedConversations },
-              { label: "AI Conversion Rate", value: `${ai.aiConversionRate}%` },
-              { label: "Handoff Rate", value: `${ai.handoffRate}%` }
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{item.label}</p>
-                <p className="mt-1 text-xl font-semibold text-slate-950">{String(item.value)}</p>
-              </div>
-            ))}
+      {/* ─── AI Analytics (Pro/Enterprise/Trial only) ────────────── */}
+      {aiEnabled && <>
+        <section>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            AI Assistant Analytics
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Total Conversations"
+              value={ai.totalConversations.toLocaleString()}
+              detail={`${dateRange.label}`}
+              icon={Bot}
+            />
+            <StatCard
+              label="Bookings via AI"
+              value={ai.bookingsGenerated.toLocaleString()}
+              detail={`Conversion rate: ${ai.aiConversionRate}%`}
+              icon={TrendingUp}
+            />
+            <StatCard
+              label="Human Handoffs"
+              value={ai.handoffConversations.toLocaleString()}
+              detail={`Handoff rate: ${ai.handoffRate}%`}
+              icon={UserCheck}
+            />
+            <StatCard
+              label="Avg Messages / Conv"
+              value={ai.avgMessagesPerConversation.toString()}
+              detail="Per AI conversation"
+              icon={Activity}
+            />
           </div>
-        </CardContent>
-      </Card>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">AI Conversation Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AiConversationStatusChart data={ai} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Top AI Response Sources</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TopMessageSourcesChart data={ai.topMessageSources} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">AI Conversation Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { label: "Open Conversations", value: ai.openConversations },
+                { label: "Booked via AI", value: ai.bookedConversations },
+                { label: "Handed off to Staff", value: ai.handoffConversations },
+                { label: "Closed Conversations", value: ai.closedConversations },
+                { label: "AI Conversion Rate", value: `${ai.aiConversionRate}%` },
+                { label: "Handoff Rate", value: `${ai.handoffRate}%` }
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{item.label}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-950">{String(item.value)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </>}
     </div>
   );
 }

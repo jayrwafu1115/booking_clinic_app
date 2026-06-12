@@ -131,16 +131,12 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "AI booking assistant",
     "Embeddable widget",
     "Advanced analytics",
-    "Priority support",
   ],
   Enterprise: [
-    "Unlimited users",
+    "Up to 100 users",
     "Up to 50 doctors",
     "Everything in Pro",
     "Custom AI instructions",
-    "Dedicated support",
-    "SLA guarantee",
-    "Custom integrations",
   ],
 };
 
@@ -245,7 +241,7 @@ export default async function BillingPage() {
           <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-blue-600 hover:underline">
             {SUPPORT_EMAIL}
           </a>{" "}
-          to upgrade — we'll activate your plan within 24 hours.
+          to upgrade &mdash; we&apos;ll activate your plan within 24 hours.
         </p>
       </section>
     </div>

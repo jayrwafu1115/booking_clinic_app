@@ -674,6 +674,16 @@ export async function getPublicWidgetConfig(clinicSlug: string): Promise<PublicW
     return null;
   }
 
+  const { data: subscription } = await supabase
+    .from("clinic_subscriptions")
+    .select("plan:subscription_plans(ai_enabled)")
+    .eq("clinic_id", clinic.id)
+    .maybeSingle<{ plan: { ai_enabled: boolean } | null }>();
+
+  if (!subscription?.plan?.ai_enabled) {
+    return null;
+  }
+
   const [settingsResult, services] = await Promise.all([
     supabase
       .from("clinic_settings")
