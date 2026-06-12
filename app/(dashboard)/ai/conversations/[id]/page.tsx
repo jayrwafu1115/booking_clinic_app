@@ -59,7 +59,7 @@ export default async function AiConversationDetailPage({ params }: { params: Pro
               <CardContent className="space-y-3 text-sm text-slate-600">
                 <p>Status: {titleize(data.conversation.status)}</p>
                 <p>Provider: {data.settings?.ai_provider ?? "openai"}</p>
-                <p>Model: {data.settings?.ai_model ?? "gpt-4o"}</p>
+                <p>Model: {data.settings?.ai_model ?? "gpt-4o-mini"}</p>
               </CardContent>
             </Card>
             <Card>

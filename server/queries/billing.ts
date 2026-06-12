@@ -88,13 +88,15 @@ export const getClinicPlanFeatures = cache(async (): Promise<ClinicPlanFeatures>
       plan: { ai_enabled: boolean; max_users: number; max_doctors: number } | null;
     }>();
 
-  const isTrial = data?.status === "trial";
+  const status = data?.status ?? "none";
+  const isTrial = status === "trial";
+  const isBlocked = status === "cancelled" || status === "suspended";
 
   return {
-    aiEnabled: isTrial ? true : (data?.plan?.ai_enabled ?? false),
+    aiEnabled: isBlocked ? false : isTrial ? true : (data?.plan?.ai_enabled ?? false),
     maxUsers: data?.plan?.max_users ?? 5,
     maxDoctors: data?.plan?.max_doctors ?? 2,
-    subscriptionStatus: data?.status ?? "none",
+    subscriptionStatus: status,
   };
 });
 

@@ -5,3 +5,4 @@ out
 .env*.local
 coverage
 *.tsbuildinfo
+scripts/test-webhook.mjs

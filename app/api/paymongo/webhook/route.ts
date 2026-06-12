@@ -37,7 +37,7 @@ function verifyPayMongoSignature(rawBody: string, signatureHeader: string | null
 
   const payload = `${parsed.timestamp}.${rawBody}`;
   const expected = createHmac("sha256", secret).update(payload).digest("hex");
-  const candidate = parsed.liveSignature ?? parsed.testSignature;
+  const candidate = parsed.liveSignature || parsed.testSignature;
   if (!candidate) return false;
 
   try {
@@ -108,12 +108,21 @@ export async function POST(request: NextRequest) {
 
       if (clinicId) {
         const supabase = createSupabaseAdminClient();
+        const planId = typeof metadata["plan_id"] === "string" ? metadata["plan_id"] : undefined;
+        const now = new Date();
+        const periodEnd = eventData?.billing_cycle_end
+          ? eventData.billing_cycle_end
+          : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()).toISOString();
+
         const { error } = await supabase
           .from("clinic_subscriptions")
           .update({
             status: "active",
-            current_period_end: eventData?.billing_cycle_end ?? null,
-            updated_at: new Date().toISOString()
+            ...(planId ? { plan_id: planId } : {}),
+            current_period_start: now.toISOString(),
+            current_period_end: periodEnd,
+            trial_ends_at: null,
+            updated_at: now.toISOString()
           })
           .eq("clinic_id", clinicId);
 

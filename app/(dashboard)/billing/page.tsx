@@ -1,8 +1,9 @@
-import { AlertCircle, Bot, Building2, CalendarCheck, Check, CreditCard, Mail, Users, Zap } from "lucide-react";
+import { AlertCircle, Bot, Building2, CalendarCheck, Check, CreditCard, Users, Zap } from "lucide-react";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBillingData } from "@/server/queries/billing";
+import { UpgradePlanButton } from "@/components/billing/upgrade-plan-button";
 import type { BillingData, } from "@/server/queries/billing";
 import type { ClinicSubscriptionStatus, SubscriptionPlan } from "@/types/database";
 
@@ -142,16 +143,11 @@ const PLAN_FEATURES: Record<string, string[]> = {
 
 const SUPPORT_EMAIL = "support@clinicflowaiph.com";
 
-function PlanCard({ plan, currentPlanId, clinicName }: { plan: SubscriptionPlan; currentPlanId: string | null; clinicName: string }) {
+function PlanCard({ plan, currentPlanId }: { plan: SubscriptionPlan; currentPlanId: string | null; clinicName: string }) {
   const isCurrent = plan.id === currentPlanId;
   const isPro = plan.name === "Pro";
   const features = PLAN_FEATURES[plan.name] ?? [];
   const savings = Math.round(100 - (plan.price_annual_centavos / (plan.price_monthly_centavos * 12)) * 100);
-
-  const mailtoSubject = encodeURIComponent(`Upgrade to ${plan.name} Plan — ${clinicName}`);
-  const mailtoBody = encodeURIComponent(
-    `Hi ClinicFlow team,\n\nI'd like to upgrade ${clinicName} to the ${plan.name} plan (${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 }).format(plan.price_monthly_centavos / 100)}/month).\n\nPlease get in touch to proceed.\n\nThank you`
-  );
 
   return (
     <div className={`relative flex flex-col rounded-2xl border p-6 ${isPro ? "border-blue-500 shadow-soft ring-1 ring-blue-500" : "border-border"}`}>
@@ -190,17 +186,7 @@ function PlanCard({ plan, currentPlanId, clinicName }: { plan: SubscriptionPlan;
           Current plan
         </div>
       ) : (
-        <a
-          href={`mailto:${SUPPORT_EMAIL}?subject=${mailtoSubject}&body=${mailtoBody}`}
-          className={`flex h-10 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition ${
-            isPro
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-slate-900 text-white hover:bg-slate-700"
-          }`}
-        >
-          <Mail className="h-4 w-4" />
-          Contact us to upgrade
-        </a>
+        <UpgradePlanButton planId={plan.id} isPro={isPro} />
       )}
     </div>
   );
