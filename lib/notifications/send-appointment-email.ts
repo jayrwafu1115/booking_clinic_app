@@ -131,7 +131,8 @@ export async function sendAppointmentEmail(params: SendAppointmentEmailParams): 
     to: params.patientEmail,
     subject: emailContent.subject,
     html: emailContent.html,
-    replyTo: params.clinic.email ?? undefined
+    replyTo: params.clinic.email ?? undefined,
+    fromName: params.clinic.name ?? undefined
   });
 
   if (notifRecord?.id) {

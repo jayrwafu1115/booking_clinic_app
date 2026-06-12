@@ -6,6 +6,7 @@ export type ResendEmailPayload = {
   subject: string;
   html: string;
   replyTo?: string;
+  fromName?: string; // e.g. "Santos Medical Clinic"
 };
 
 export type ResendSendResult = {
@@ -16,11 +17,17 @@ export type ResendSendResult = {
 
 export async function sendResendEmail(payload: ResendEmailPayload): Promise<ResendSendResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "ClinicFlow AI PH <notifications@clinicflowaiph.com>";
+  const platformFrom = process.env.RESEND_FROM_EMAIL ?? "ClinicFlow AI PH <notifications@clinicflowaiph.com>";
 
   if (!apiKey) {
     return { success: false, error: "RESEND_API_KEY is not configured." };
   }
+
+  // If a clinic name is provided, replace the display name but keep the platform address
+  // e.g. "Santos Medical Clinic <noreply@clinicflowaiph.com>"
+  const fromEmail = payload.fromName
+    ? platformFrom.replace(/^[^<]*/, `${payload.fromName} `)
+    : platformFrom;
 
   try {
     const resend = new Resend(apiKey);
