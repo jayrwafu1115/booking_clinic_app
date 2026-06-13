@@ -7,7 +7,7 @@ type PublicWebsiteCardProps = {
 };
 
 export function PublicWebsiteCard({ clinicSlug, enabled }: PublicWebsiteCardProps) {
-  const path = `/c/${clinicSlug}`;
+  const path = `/${clinicSlug}`;
 
   if (!enabled) {
     return (

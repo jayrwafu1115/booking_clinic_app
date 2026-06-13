@@ -1,3 +1,5 @@
+import { RESERVED_SLUGS } from "@/lib/validations/settings";
+
 export function slugifyClinicName(name: string) {
   const base = name
     .toLowerCase()
@@ -5,5 +7,8 @@ export function slugifyClinicName(name: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return base || `clinic-${Date.now()}`;
+  const candidate = base || "clinic";
+
+  // Avoid colliding with app routes used at the root level.
+  return RESERVED_SLUGS.has(candidate) ? `${candidate}-clinic` : candidate;
 }

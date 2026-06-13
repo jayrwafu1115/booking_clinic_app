@@ -5,6 +5,15 @@ import { SUPPORTED_HOLIDAY_YEARS } from "@/lib/constants/ph-holidays";
 
 const optionalText = z.string().trim().optional().transform((value) => value || null);
 
+// Slugs that are taken by app routes at the root level.
+// A clinic slug matching any of these would never reach the public site page.
+export const RESERVED_SLUGS = new Set([
+  "dashboard", "appointments", "calendar", "patients", "services", "doctors",
+  "availability", "ai", "billing", "reports", "settings", "admin",
+  "login", "register", "forgot-password", "widget", "confirm", "api",
+  "c", "health", "404", "500"
+]);
+
 export const clinicProfileSchema = z.object({
   clinicId: z.string().uuid(),
   name: z.string().trim().min(2).max(120),
@@ -13,7 +22,8 @@ export const clinicProfileSchema = z.object({
     .trim()
     .min(2)
     .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only."),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only.")
+    .refine((slug) => !RESERVED_SLUGS.has(slug), "This slug is reserved. Please choose a different one."),
   clinicType: z.enum(CLINIC_TYPES),
   email: z.string().trim().email().optional().or(z.literal("")).transform((value) => value || null),
   phone: optionalText,
