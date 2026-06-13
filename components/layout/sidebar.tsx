@@ -105,16 +105,38 @@ function canSeeItem(item: NavItem, role: UserRole | null, aiEnabled: boolean): b
 type SidebarProps = {
   role: UserRole | null;
   aiEnabled: boolean;
+  clinicBrand?: { name: string; logo_url: string | null } | null;
 };
 
-export function Sidebar({ role, aiEnabled }: SidebarProps) {
+function clinicInitials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "CF"
+  );
+}
+
+export function Sidebar({ role, aiEnabled, clinicBrand }: SidebarProps) {
   const pathname = usePathname();
+  const brandName = clinicBrand?.name ?? "ClinicFlow AI PH";
 
   return (
     <aside className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-5">
       <Link href="/dashboard" className="flex items-center gap-3 px-2 text-base font-bold text-slate-950">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">CF</span>
-        ClinicFlow AI PH
+        {clinicBrand?.logo_url ? (
+          <span
+            aria-hidden="true"
+            className="h-10 w-10 shrink-0 rounded-xl bg-cover bg-center ring-1 ring-slate-200"
+            style={{ backgroundImage: `url(${clinicBrand.logo_url})` }}
+          />
+        ) : (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+            {clinicInitials(brandName)}
+          </span>
+        )}
+        <span className="truncate">{brandName}</span>
       </Link>
       <nav className="space-y-6">
         {sections.map((section) => {

@@ -1,7 +1,27 @@
+import { cache } from "react";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { hasPermission, profileHasPermission } from "@/lib/auth/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppointmentWithRelations, AvailabilityRule, BlockedDate, Doctor, Patient, Profile, Service } from "@/types/database";
+
+export type ClinicBrand = {
+  name: string;
+  logo_url: string | null;
+};
+
+export const getClinicBrand = cache(async (): Promise<ClinicBrand | null> => {
+  const profile = await getCurrentProfile();
+  if (!profile?.clinic_id) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("clinics")
+    .select("name, logo_url")
+    .eq("id", profile.clinic_id)
+    .maybeSingle<ClinicBrand>();
+
+  return data ?? null;
+});
 
 export type AccessContext = {
   profile: Profile;

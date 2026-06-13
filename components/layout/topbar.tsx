@@ -150,7 +150,17 @@ function SearchBar() {
   );
 }
 
-export function Topbar({ profile, notifications, aiEnabled }: { profile: Profile | null; notifications: NotificationItem[]; aiEnabled: boolean }) {
+export function Topbar({
+  profile,
+  notifications,
+  aiEnabled,
+  clinicBrand
+}: {
+  profile: Profile | null;
+  notifications: NotificationItem[];
+  aiEnabled: boolean;
+  clinicBrand?: { name: string; logo_url: string | null } | null;
+}) {
   const initials = getInitials(profile?.full_name);
   const roleName = profile?.role
     ? profile.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
@@ -166,7 +176,7 @@ export function Topbar({ profile, notifications, aiEnabled }: { profile: Profile
         </DialogTrigger>
         <DialogContent>
           <DialogTitle className="sr-only">Navigation</DialogTitle>
-          <Sidebar role={profile?.role ?? null} aiEnabled={aiEnabled} />
+          <Sidebar role={profile?.role ?? null} aiEnabled={aiEnabled} clinicBrand={clinicBrand} />
         </DialogContent>
       </Dialog>
 
