@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClinicFlow AI PH — How It Works</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #0d9488;
+      --teal-lt: #ccfbf1;
+      --teal-dk: #0f766e;
+      --blue:    #2563eb;
+      --blue-lt: #dbeafe;
+      --violet:  #7c3aed;
+      --violet-lt: #ede9fe;
+      --amber:   #d97706;
+      --amber-lt: #fef3c7;
+      --rose:    #e11d48;
+      --rose-lt: #ffe4e6;
+      --slate:   #334155;
+      --gray-bg: #f8fafc;
+      --white:   #ffffff;
+      --shadow:  0 4px 24px rgba(0,0,0,.09);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,.14);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--gray-bg);
+      color: var(--slate);
+      padding: 40px 24px 80px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--teal);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.15;
+    }
+    .header h1 span { color: var(--teal); }
+    .header p {
+      margin-top: 12px;
+      font-size: 16px;
+      color: #64748b;
+      max-width: 560px;
+      margin-inline: auto;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────── */
+    .diagram {
+      max-width: 1160px;
+      margin-inline: auto;
+      display: grid;
+      gap: 32px;
+    }
+
+    /* ── ACTOR ROW ──────────────────────────────────── */
+    .actor-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .actor {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      background: var(--white);
+      border-radius: 16px;
+      padding: 24px 16px;
+      box-shadow: var(--shadow);
+      border: 2px solid transparent;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .actor:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .actor-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+    .actor h3 { font-size: 14px; font-weight: 700; text-align: center; }
+    .actor p  { font-size: 12px; color: #64748b; text-align: center; line-height: 1.5; }
+
+    .actor.patient  { border-color: var(--blue);   }
+    .actor.owner    { border-color: var(--teal);   }
+    .actor.doctor   { border-color: var(--violet); }
+    .actor.staff    { border-color: var(--amber);  }
+    .actor.admin    { border-color: var(--rose);   }
+
+    .actor.patient  .actor-icon { background: var(--blue-lt);   }
+    .actor.owner    .actor-icon { background: var(--teal-lt);   }
+    .actor.doctor   .actor-icon { background: var(--violet-lt); }
+    .actor.staff    .actor-icon { background: var(--amber-lt);  }
+    .actor.admin    .actor-icon { background: var(--rose-lt);   }
+
+    /* ── FLOW ARROW ─────────────────────────────────── */
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .flow-arrow svg { flex-shrink: 0; }
+
+    /* ── PLATFORM CORE ──────────────────────────────── */
+    .platform {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-radius: 24px;
+      padding: 40px 36px;
+      color: #fff;
+      box-shadow: var(--shadow-lg);
+    }
+    .platform-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      margin-bottom: 28px;
+    }
+    .platform-title span { color: #2dd4bf; }
+
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .module {
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: background .2s;
+    }
+    .module:hover { background: rgba(255,255,255,.13); }
+    .module-icon { font-size: 24px; }
+    .module h4   { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .module p    { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+
+    /* ── INTEGRATION STRIP ───────────────────────────── */
+    .integrations {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .integ {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .integ-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .integ-body h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .integ-body p  { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+    /* ── FLOW SECTION ────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    /* ── BOOKING FLOW ────────────────────────────────── */
+    .booking-flow {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+    .booking-flow h3 {
+      font-size: 16px; font-weight: 800; margin-bottom: 24px; text-align: center;
+    }
+    .steps {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 120px;
+      text-align: center;
+    }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal), var(--teal-dk));
+      color: #fff; font-size: 16px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(13,148,136,.35);
+    }
+    .step-icon { font-size: 22px; }
+    .step h4 { font-size: 12px; font-weight: 700; color: #0f172a; }
+    .step p  { font-size: 11px; color: #64748b; line-height: 1.4; }
+    .step-arrow {
+      color: #cbd5e1; font-size: 20px; margin-top: 10px; padding: 0 4px;
+      align-self: center;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    @media (max-width: 600px) {
+      .steps { flex-direction: column; align-items: center; }
+      .step-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="header">
+  <div class="badge">🇵🇭 &nbsp;Client Demo</div>
+  <h1>ClinicFlow <span>AI PH</span></h1>
+  <p>A complete cloud-based clinic management & online booking platform built for Philippine healthcare providers.</p>
+</header>
+
+<div class="diagram">
+
+  <!-- ═══════════════ SECTION: WHO USES IT ═══════════════ -->
+  <div class="section-label">Who uses the platform</div>
+
+  <div class="actor-row">
+    <div class="actor patient">
+      <div class="actor-icon">🧑‍💼</div>
+      <h3>Patient / Public</h3>
+      <p>Books appointments via the clinic's public page or embedded widget — no account required.</p>
+    </div>
+    <div class="actor owner">
+      <div class="actor-icon">🏥</div>
+      <h3>Clinic Owner</h3>
+      <p>Manages the full clinic: doctors, services, schedules, billing & reports.</p>
+    </div>
+    <div class="actor doctor">
+      <div class="actor-icon">🩺</div>
+      <h3>Doctor</h3>
+      <p>Views own schedule & patient queue. Updates appointment status.</p>
+    </div>
+    <div class="actor staff">
+      <div class="actor-icon">📋</div>
+      <h3>Receptionist / Staff</h3>
+      <p>Creates & manages appointments, walks in patients, handles daily operations.</p>
+    </div>
+    <div class="actor admin">
+      <div class="actor-icon">🛡️</div>
+      <h3>Super Admin</h3>
+      <p>Platform-level oversight — manages all clinics, users & subscriptions.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ARROW ═══════════════ -->
+  <div class="flow-arrow">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    All roles interact with the core platform
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </div>
+
+  <!-- ═══════════════ PLATFORM CORE ═══════════════ -->
+  <div class="platform">
+    <div class="platform-title">⚡ ClinicFlow <span>AI PH</span> Platform</div>
+
+    <div class="modules">
+      <div class="module">
+        <div class="module-icon">📅</div>
+        <h4>Appointment Management</h4>
+        <p>Create, reschedule, cancel & track appointments with real-time status updates.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">🗓️</div>
+        <h4>Calendar View</h4>
+        <p>Daily, weekly & monthly calendar showing doctor schedules and bookings at a glance.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">👥</div>
+        <h4>Patient Records</h4>
+        <p>Searchable patient list with appointment history and contact details.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">🩺</div>
+        <h4>Doctor Profiles</h4>
+        <p>Manage doctor info, specialisations, working hours & availability exceptions.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">💆</div>
+        <h4>Services & Pricing</h4>
+        <p>Define services offered, duration, and pricing in Philippine Peso (PHP).</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">⏰</div>
+        <h4>Availability Engine</h4>
+        <p>Recurring weekly slots + one-off overrides. Respects PH public holidays.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">💳</div>
+        <h4>Billing & Payments</h4>
+        <p>PayMongo-powered online payments. Tracks payment status per appointment.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">📊</div>
+        <h4>Reports & Analytics</h4>
+        <p>Appointment trends, revenue summaries & doctor utilisation — exportable.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">🤖</div>
+        <h4>AI Assistant</h4>
+        <p>Internal AI chat for staff + public-facing AI chatbot widget for patient Q&amp;A.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">⚙️</div>
+        <h4>Clinic Settings</h4>
+        <p>Branding, business hours, email templates, notification preferences.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">🌐</div>
+        <h4>Public Clinic Page</h4>
+        <p>Branded landing page per clinic. Patients book directly at your unique URL.</p>
+      </div>
+      <div class="module">
+        <div class="module-icon">🔗</div>
+        <h4>Embeddable Widget</h4>
+        <p>One &lt;script&gt; tag adds a booking chatbot to any existing clinic website.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ARROW ═══════════════ -->
+  <div class="flow-arrow">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    Powered by best-in-class integrations
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </div>
+
+  <!-- ═══════════════ INTEGRATIONS ═══════════════ -->
+  <div class="section-label">Integrations & infrastructure</div>
+
+  <div class="integrations">
+    <div class="integ">
+      <div class="integ-icon" style="background:#e0f2fe;">🗄️</div>
+      <div class="integ-body">
+        <h4>Supabase (PostgreSQL)</h4>
+        <p>Cloud database with row-level security. Every clinic's data is fully isolated.</p>
+      </div>
+    </div>
+    <div class="integ">
+      <div class="integ-icon" style="background:#f0fdf4;">💸</div>
+      <div class="integ-body">
+        <h4>PayMongo</h4>
+        <p>Philippine payment gateway — GCash, Maya, credit & debit cards.</p>
+      </div>
+    </div>
+    <div class="integ">
+      <div class="integ-icon" style="background:#fefce8;">📧</div>
+      <div class="integ-body">
+        <h4>Resend (Email)</h4>
+        <p>Transactional emails: booking confirmations, reminders & cancellations.</p>
+      </div>
+    </div>
+    <div class="integ">
+      <div class="integ-icon" style="background:#fdf4ff;">🧠</div>
+      <div class="integ-body">
+        <h4>OpenAI / Ollama</h4>
+        <p>AI layer powering the staff assistant and the public chatbot widget.</p>
+      </div>
+    </div>
+    <div class="integ">
+      <div class="integ-icon" style="background:#fff7ed;">🔐</div>
+      <div class="integ-body">
+        <h4>Supabase Auth</h4>
+        <p>Secure email/password login with role-based access control (RBAC).</p>
+      </div>
+    </div>
+    <div class="integ">
+      <div class="integ-icon" style="background:#f0f9ff;">☁️</div>
+      <div class="integ-body">
+        <h4>Next.js 15 + Vercel</h4>
+        <p>Server-rendered React app. Fast, SEO-ready, deployed to Vercel edge.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PATIENT BOOKING FLOW ═══════════════ -->
+  <div class="booking-flow">
+    <h3>🔄 Patient Booking Flow — End to End</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">🌐</div>
+        <div class="step-num">1</div>
+        <h4>Discover</h4>
+        <p>Patient visits clinic's public page or embedded widget on any website.</p>
+      </div>
+      <div class="step-arrow">›</div>
+      <div class="step">
+        <div class="step-icon">🤖</div>
+        <div class="step-num">2</div>
+        <h4>AI Chat</h4>
+        <p>AI chatbot answers questions about services, hours & availability.</p>
+      </div>
+      <div class="step-arrow">›</div>
+      <div class="step">
+        <div class="step-icon">📆</div>
+        <div class="step-num">3</div>
+        <h4>Select Slot</h4>
+        <p>Patient picks doctor, service & available time slot.</p>
+      </div>
+      <div class="step-arrow">›</div>
+      <div class="step">
+        <div class="step-icon">💳</div>
+        <div class="step-num">4</div>
+        <h4>Pay Online</h4>
+        <p>Optional upfront payment via GCash, Maya or card (PayMongo).</p>
+      </div>
+      <div class="step-arrow">›</div>
+      <div class="step">
+        <div class="step-icon">📧</div>
+        <div class="step-num">5</div>
+        <h4>Confirm</h4>
+        <p>Instant email confirmation with appointment details & calendar link.</p>
+      </div>
+      <div class="step-arrow">›</div>
+      <div class="step">
+        <div class="step-icon">🏥</div>
+        <div class="step-num">6</div>
+        <h4>Visit Clinic</h4>
+        <p>Receptionist sees booking in dashboard; doctor's queue updates live.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  ClinicFlow AI PH &nbsp;·&nbsp; Built for Philippine Clinics &nbsp;·&nbsp; Confidential Client Demo
+</div>
+
+</body>
+</html>
