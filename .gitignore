@@ -6,3 +6,5 @@ out
 coverage
 *.tsbuildinfo
 scripts/test-webhook.mjs
+
+.vercel
