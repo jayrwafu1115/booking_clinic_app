@@ -22,7 +22,18 @@ export type Permission =
   | "availability:view"
   | "availability:manage"
   | "ai:view"
-  | "ai:manage";
+  | "ai:manage"
+  | "invoices:view"
+  | "invoices:manage"
+  | "notes:view"
+  | "notes:manage"
+  | "queue:view"
+  | "queue:manage"
+  | "forms:view"
+  | "forms:manage"
+  | "packages:view"
+  | "packages:manage"
+  | "rooms:manage";
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
@@ -47,7 +58,13 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "availability:view",
     "availability:manage",
     "ai:view",
-    "ai:manage"
+    "ai:manage",
+    "invoices:view", "invoices:manage",
+    "notes:view", "notes:manage",
+    "queue:view", "queue:manage",
+    "forms:view", "forms:manage",
+    "packages:view", "packages:manage",
+    "rooms:manage"
   ],
   clinic_owner: [
     "clinic_settings:view",
@@ -70,7 +87,13 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "availability:view",
     "availability:manage",
     "ai:view",
-    "ai:manage"
+    "ai:manage",
+    "invoices:view", "invoices:manage",
+    "notes:view", "notes:manage",
+    "queue:view", "queue:manage",
+    "forms:view", "forms:manage",
+    "packages:view", "packages:manage",
+    "rooms:manage"
   ],
   receptionist: [
     "clinic_settings:view",
@@ -82,10 +105,35 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "doctors:view",
     "services:view",
     "availability:view",
-    "ai:view"
+    "ai:view",
+    "invoices:view", "invoices:manage",
+    "notes:view",
+    "queue:view", "queue:manage",
+    "forms:view",
+    "packages:view"
   ],
-  doctor: ["appointments:view_assigned", "patients:view_related", "patients:view", "doctors:view", "services:view", "availability:view", "ai:view"],
-  staff: ["clinic_settings:view", "appointments:view_all", "patients:view", "doctors:view", "services:view", "availability:view", "ai:view"]
+  doctor: [
+    "appointments:view_assigned",
+    "patients:view_related",
+    "patients:view",
+    "doctors:view",
+    "services:view",
+    "availability:view",
+    "ai:view",
+    "notes:view", "notes:manage",
+    "invoices:view"
+  ],
+  staff: [
+    "clinic_settings:view",
+    "appointments:view_all",
+    "patients:view",
+    "doctors:view",
+    "services:view",
+    "availability:view",
+    "ai:view",
+    "queue:view", "queue:manage",
+    "invoices:view"
+  ]
 };
 
 export const assignableRoles: AssignableUserRole[] = ["clinic_owner", "receptionist", "doctor", "staff"];

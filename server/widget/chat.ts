@@ -680,10 +680,9 @@ export async function getPublicWidgetConfig(clinicSlug: string): Promise<PublicW
     .eq("clinic_id", clinic.id)
     .maybeSingle<{ status: string; plan: { ai_enabled: boolean } | null }>();
 
-  const isTrial = subscription?.status === "trial";
   const planHasAi = subscription?.plan?.ai_enabled ?? false;
 
-  if (!isTrial && !planHasAi) {
+  if (!planHasAi) {
     return null;
   }
 

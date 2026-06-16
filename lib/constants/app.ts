@@ -1,8 +1,11 @@
-export const APP_NAME = "ClinicFlow AI PH";
+export const APP_NAME = "Book Clinic PH";
 export const DEFAULT_TIMEZONE = "Asia/Manila";
 export const DEFAULT_COUNTRY = "Philippines";
 export const DEFAULT_CURRENCY = "PHP";
-export const FREE_TRIAL_DAYS = Number(process.env.FREE_TRIAL_DAYS ?? 14);
+
+export const FREE_TIER_MAX_PATIENTS = 10;
+export const FREE_TIER_MAX_DOCTORS = 1;
+export const FREE_TIER_MAX_SERVICES = 2;
 
 export const CLINIC_TYPES = [
   "medical",

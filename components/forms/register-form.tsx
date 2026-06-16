@@ -33,7 +33,7 @@ export function RegisterForm() {
         <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} />
       </div>
-      <SubmitButton>Start free trial</SubmitButton>
+      <SubmitButton>Create free account</SubmitButton>
     </form>
   );
 }

@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-950">Platform Overview</h1>
         <p className="mt-1 text-sm text-slate-500">
-          SaaS-wide metrics across all clinics on ClinicFlow AI PH
+          SaaS-wide metrics across all clinics on Book Clinic PH
         </p>
       </div>
 
@@ -61,7 +61,7 @@ export default async function AdminDashboardPage() {
           Subscriptions
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <AdminStatCard label="Trial" value={fmt(metrics.trial_subscriptions)} icon={Timer} accent="orange" />
+          <AdminStatCard label="Free Tier" value={fmt(metrics.free_subscriptions)} icon={Timer} accent="orange" />
           <AdminStatCard label="Active / Paid" value={fmt(metrics.active_subscriptions)} icon={CreditCard} accent="green" />
           <AdminStatCard label="Past Due" value={fmt(metrics.past_due_subscriptions)} icon={XCircle} accent="red" />
           <AdminStatCard label="Cancelled" value={fmt(metrics.cancelled_subscriptions)} icon={PauseCircle} accent="purple" />
@@ -98,12 +98,12 @@ export default async function AdminDashboardPage() {
                 note: "Active paid / total clinics"
               },
               {
-                label: "Trial Clinics",
+                label: "Free Tier Clinics",
                 value:
                   metrics.total_clinics > 0
-                    ? `${Math.round((metrics.trial_subscriptions / metrics.total_clinics) * 100)}%`
+                    ? `${Math.round((metrics.free_subscriptions / metrics.total_clinics) * 100)}%`
                     : "—",
-                note: "Still on free trial"
+                note: "On the free plan"
               },
               {
                 label: "Avg Appointments / Clinic",

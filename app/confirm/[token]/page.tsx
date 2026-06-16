@@ -1,7 +1,10 @@
 import { CalendarClock, CheckCircle, XCircle } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatManilaDateTime } from "@/lib/utils/format";
+import { PatientConfirmActions } from "@/components/confirm/patient-actions";
 import type { Appointment, Clinic, Doctor, Patient, Service } from "@/types/database";
+
+export const dynamic = "force-dynamic";
 
 type ConfirmPageProps = {
   params: Promise<{ token: string }>;
@@ -40,19 +43,23 @@ export default async function ConfirmPage({ params }: ConfirmPageProps) {
   const clinicAddress = [clinic?.address_line_1, clinic?.city, clinic?.province].filter(Boolean).join(", ");
 
   const statusColor: Record<string, string> = {
-    booked: "text-blue-700 bg-blue-50 ring-blue-200",
-    confirmed: "text-emerald-700 bg-emerald-50 ring-emerald-200",
-    cancelled: "text-red-700 bg-red-50 ring-red-200",
-    completed: "text-slate-700 bg-slate-50 ring-slate-200",
-    no_show: "text-orange-700 bg-orange-50 ring-orange-200",
+    booked:      "text-blue-700 bg-blue-50 ring-blue-200",
+    confirmed:   "text-emerald-700 bg-emerald-50 ring-emerald-200",
+    cancelled:   "text-red-700 bg-red-50 ring-red-200",
+    completed:   "text-slate-700 bg-slate-50 ring-slate-200",
+    no_show:     "text-orange-700 bg-orange-50 ring-orange-200",
+    checked_in:  "text-purple-700 bg-purple-50 ring-purple-200",
+    in_progress: "text-yellow-700 bg-yellow-50 ring-yellow-200",
   };
 
   const statusLabel: Record<string, string> = {
-    booked: "Booked",
-    confirmed: "Confirmed",
-    cancelled: "Cancelled",
-    completed: "Completed",
-    no_show: "No Show",
+    booked:      "Booked — awaiting confirmation",
+    confirmed:   "Confirmed",
+    cancelled:   "Cancelled",
+    completed:   "Completed",
+    no_show:     "No Show",
+    checked_in:  "Checked In",
+    in_progress: "In Progress",
   };
 
   return (
@@ -81,6 +88,15 @@ export default async function ConfirmPage({ params }: ConfirmPageProps) {
           </dl>
         </div>
 
+        {/* Patient actions — confirm or cancel */}
+        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-5 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your Actions</p>
+          <PatientConfirmActions token={token} status={appointment.status} />
+          {!["booked", "confirmed", "checked_in"].includes(appointment.status) && (
+            <p className="text-sm text-slate-400 text-center">No actions available for this appointment.</p>
+          )}
+        </div>
+
         {clinic && (
           <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
             <div className="bg-slate-50 px-5 py-3 border-b border-slate-100">
@@ -97,7 +113,7 @@ export default async function ConfirmPage({ params }: ConfirmPageProps) {
 
         <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
           <CalendarClock className="h-3.5 w-3.5" />
-          ClinicFlow AI PH — automated booking confirmation
+          Book Clinic PH — automated booking confirmation
         </div>
       </div>
     </main>

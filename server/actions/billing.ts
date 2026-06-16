@@ -57,7 +57,7 @@ export async function initiatePlanUpgradeAction(
         clinic_id: profile.clinic_id,
         plan_id: plan.id
       },
-      description: `ClinicFlow AI PH — ${plan.name} Plan`
+      description: `Book Clinic PH — ${plan.name} Plan`
     });
 
     await createAuditLog({

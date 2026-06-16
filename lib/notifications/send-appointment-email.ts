@@ -2,6 +2,14 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatManilaDateTime } from "@/lib/utils/format";
 import { sendResendEmail } from "./resend";
+import { sendSmsNotification } from "./sms";
+import {
+  buildBookingConfirmationSms,
+  buildAppointmentConfirmedSms,
+  buildAppointmentRescheduledSms,
+  buildAppointmentCancelledSms,
+  buildAppointmentReminderSms,
+} from "./sms/templates";
 import {
   buildBookingConfirmationEmail,
   buildAppointmentConfirmedEmail,
@@ -19,6 +27,8 @@ type NotificationSettingsSlice = Pick<
   | "notify_appointment_rescheduled"
   | "notify_appointment_cancelled"
   | "notify_appointment_reminder"
+  | "sms_enabled"
+  | "sms_provider"
 >;
 
 const defaultNotificationSettings: NotificationSettingsSlice = {
@@ -26,7 +36,9 @@ const defaultNotificationSettings: NotificationSettingsSlice = {
   notify_appointment_confirmed: true,
   notify_appointment_rescheduled: true,
   notify_appointment_cancelled: true,
-  notify_appointment_reminder: false
+  notify_appointment_reminder: false,
+  sms_enabled: false,
+  sms_provider: null,
 };
 
 function isNotificationEnabled(type: AppointmentNotificationType, settings: NotificationSettingsSlice): boolean {
@@ -49,6 +61,7 @@ export type SendAppointmentEmailParams = {
   clinicId: string;
   appointmentId: string;
   patientEmail: string | null;
+  patientPhone: string | null;
   patientName: string;
   serviceName: string;
   doctorName: string | null;
@@ -61,11 +74,37 @@ export type SendAppointmentEmailParams = {
 };
 
 export async function sendAppointmentEmail(params: SendAppointmentEmailParams): Promise<void> {
+  if (!isNotificationEnabled(params.type, params.clinicSettings)) return;
+
+  const formattedStart = formatManilaDateTime(params.startAt);
+  const smsData = {
+    patientName: params.patientName,
+    serviceName: params.serviceName,
+    doctorName: params.doctorName,
+    startAt: formattedStart,
+    clinicName: params.clinic.name,
+    clinicPhone: params.clinic.phone,
+  };
+
+  // SMS — send in parallel with email when clinic has SMS enabled and patient has a phone number
+  if (params.clinicSettings.sms_enabled && params.patientPhone) {
+    let smsMessage: string;
+    switch (params.type) {
+      case "booking_confirmation":   smsMessage = buildBookingConfirmationSms(smsData); break;
+      case "appointment_confirmed":  smsMessage = buildAppointmentConfirmedSms(smsData); break;
+      case "appointment_rescheduled":smsMessage = buildAppointmentRescheduledSms(smsData); break;
+      case "appointment_cancelled":  smsMessage = buildAppointmentCancelledSms(smsData, params.cancellationReason); break;
+      case "appointment_reminder":   smsMessage = buildAppointmentReminderSms(smsData); break;
+    }
+    void sendSmsNotification({ to: params.patientPhone, message: smsMessage }).catch((err) =>
+      console.error("[SMS] Failed to send:", err)
+    );
+  }
+
   if (!params.patientEmail) {
-    console.warn(`[sendAppointmentEmail] Skipped ${params.type} for appointment ${params.appointmentId} — no patient email on record.`);
+    console.warn(`[sendAppointmentEmail] No email for appointment ${params.appointmentId} — email skipped.`);
     return;
   }
-  if (!isNotificationEnabled(params.type, params.clinicSettings)) return;
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
   const confirmationUrl = params.confirmationToken ? `${appUrl}/confirm/${params.confirmationToken}` : undefined;
@@ -173,7 +212,7 @@ export async function sendAppointmentEmailById(
     const { data: appt } = await supabase
       .from("appointments")
       .select(
-        "id, clinic_id, start_at, end_at, cancellation_reason, confirmation_token, patients(id, full_name, email), services(id, name), doctors(id, full_name)"
+        "id, clinic_id, start_at, end_at, cancellation_reason, confirmation_token, patients(id, full_name, email, phone), services(id, name), doctors(id, full_name)"
       )
       .eq("id", appointmentId)
       .single<{
@@ -183,7 +222,7 @@ export async function sendAppointmentEmailById(
         end_at: string;
         cancellation_reason: string | null;
         confirmation_token: string | null;
-        patients: { id: string; full_name: string; email: string | null } | null;
+        patients: { id: string; full_name: string; email: string | null; phone: string | null } | null;
         services: { id: string; name: string } | null;
         doctors: { id: string; full_name: string } | null;
       }>();
@@ -199,7 +238,7 @@ export async function sendAppointmentEmailById(
       supabase
         .from("clinic_settings")
         .select(
-          "notify_booking_confirmation, notify_appointment_confirmed, notify_appointment_rescheduled, notify_appointment_cancelled, notify_appointment_reminder"
+          "notify_booking_confirmation, notify_appointment_confirmed, notify_appointment_rescheduled, notify_appointment_cancelled, notify_appointment_reminder, sms_enabled, sms_provider"
         )
         .eq("clinic_id", appt.clinic_id)
         .maybeSingle<NotificationSettingsSlice>()
@@ -212,6 +251,7 @@ export async function sendAppointmentEmailById(
       clinicId: appt.clinic_id,
       appointmentId: appt.id,
       patientEmail: appt.patients?.email ?? null,
+      patientPhone: appt.patients?.phone ?? null,
       patientName: appt.patients?.full_name ?? "Patient",
       serviceName: appt.services?.name ?? "Appointment",
       doctorName: appt.doctors?.full_name ?? null,

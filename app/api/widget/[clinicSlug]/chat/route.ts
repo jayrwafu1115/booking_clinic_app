@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const clientIp = getClientIp(request);
-  const rateLimit = checkRateLimit(`widget:${slug.data}:${clientIp}`, {
+  const rateLimit = await checkRateLimit(`widget:${slug.data}:${clientIp}`, {
     limit: RATE_LIMIT_MAX_REQUESTS,
     windowMs: RATE_LIMIT_WINDOW_MS
   });

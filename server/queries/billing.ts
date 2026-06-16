@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { FREE_TIER_MAX_DOCTORS, FREE_TIER_MAX_PATIENTS, FREE_TIER_MAX_SERVICES } from "@/lib/constants/app";
 import type { ClinicSubscription, SubscriptionPlan, Clinic } from "@/types/database";
 
 export type PaymentRow = {
@@ -24,7 +25,6 @@ export type PaymentsData = {
 export type BillingData = {
   subscription: (ClinicSubscription & { plan: SubscriptionPlan | null }) | null;
   plans: SubscriptionPlan[];
-  trialDaysLeft: number | null;
   clinicName: string;
 };
 
@@ -56,19 +56,16 @@ export async function getBillingData(): Promise<BillingData | null> {
   const plans = plansResult.data ?? [];
   const clinicName = clinicResult.data?.name ?? "My Clinic";
 
-  let trialDaysLeft: number | null = null;
-  if (subscription?.status === "trial" && subscription.trial_ends_at) {
-    const ms = new Date(subscription.trial_ends_at).getTime() - Date.now();
-    trialDaysLeft = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  }
-
-  return { subscription, plans, trialDaysLeft, clinicName };
+  return { subscription, plans, clinicName };
 }
 
 export type ClinicPlanFeatures = {
   aiEnabled: boolean;
   maxUsers: number;
   maxDoctors: number;
+  maxPatients: number;
+  maxServices: number;
+  smsEnabled: boolean;
   publicWebsiteEnabled: boolean;
   subscriptionStatus: string;
 };
@@ -76,7 +73,7 @@ export type ClinicPlanFeatures = {
 export const getClinicPlanFeatures = cache(async (): Promise<ClinicPlanFeatures> => {
   const profile = await getCurrentProfile();
   if (!profile?.clinic_id) {
-    return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, publicWebsiteEnabled: false, subscriptionStatus: "none" };
+    return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, maxPatients: 0, maxServices: 0, smsEnabled: false, publicWebsiteEnabled: false, subscriptionStatus: "none" };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -90,16 +87,35 @@ export const getClinicPlanFeatures = cache(async (): Promise<ClinicPlanFeatures>
     }>();
 
   const status = data?.status ?? "none";
-  const isTrial = status === "trial";
+  const isFree = status === "free";
   const isBlocked = status === "cancelled" || status === "suspended";
-  const planHasPublicWebsite = (data?.plan?.features ?? []).includes("public_website");
+  const isActive = status === "active";
+
+  if (isFree) {
+    return {
+      aiEnabled: false,
+      maxUsers: 2147483647,
+      maxDoctors: FREE_TIER_MAX_DOCTORS,
+      maxPatients: FREE_TIER_MAX_PATIENTS,
+      maxServices: FREE_TIER_MAX_SERVICES,
+      smsEnabled: false,
+      publicWebsiteEnabled: false,
+      subscriptionStatus: status,
+    };
+  }
+
+  if (isBlocked) {
+    return { aiEnabled: false, maxUsers: 0, maxDoctors: 0, maxPatients: 0, maxServices: 0, smsEnabled: false, publicWebsiteEnabled: false, subscriptionStatus: status };
+  }
 
   return {
-    aiEnabled: isBlocked ? false : isTrial ? true : (data?.plan?.ai_enabled ?? false),
-    maxUsers: data?.plan?.max_users ?? 5,
-    maxDoctors: data?.plan?.max_doctors ?? 2,
-    // Paid subscriptions only — trials never get the public website.
-    publicWebsiteEnabled: status === "active" && planHasPublicWebsite,
+    aiEnabled: isActive && (data?.plan?.ai_enabled ?? false),
+    maxUsers: 2147483647,
+    maxDoctors: 2147483647,
+    maxPatients: 2147483647,
+    maxServices: 2147483647,
+    smsEnabled: isActive,
+    publicWebsiteEnabled: isActive,
     subscriptionStatus: status,
   };
 });

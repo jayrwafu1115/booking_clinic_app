@@ -8,10 +8,12 @@ import {
   Building2,
   CreditCard,
   LayoutDashboard,
+  LogOut,
   Settings,
   Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logoutAction } from "@/server/actions/auth";
 
 const navItems = [
   { href: "/admin", label: "Platform Overview", icon: LayoutDashboard, exact: true },
@@ -56,7 +58,7 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto space-y-1">
         <Link
           href="/dashboard"
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
@@ -64,6 +66,15 @@ export function AdminSidebar() {
           <LayoutDashboard className="h-4 w-4" />
           Back to Clinic View
         </Link>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-400"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </form>
       </div>
     </aside>
   );

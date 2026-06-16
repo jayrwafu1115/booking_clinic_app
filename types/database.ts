@@ -135,6 +135,7 @@ export type Doctor = {
   phone: string | null;
   avatar_url: string | null;
   active: boolean;
+  ical_token: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -202,6 +203,8 @@ export type Appointment = {
   patient_id: string;
   doctor_id: string | null;
   service_id: string;
+  room_id: string | null;
+  recurrence_id: string | null;
   status: AppointmentStatus;
   source: AppointmentSource;
   start_at: string;
@@ -301,7 +304,7 @@ export type SubscriptionPlan = {
   updated_at: string;
 };
 
-export type ClinicSubscriptionStatus = "trial" | "active" | "past_due" | "cancelled" | "suspended";
+export type ClinicSubscriptionStatus = "free" | "active" | "past_due" | "cancelled" | "suspended";
 
 export type ClinicSubscription = {
   id: string;
@@ -316,4 +319,200 @@ export type ClinicSubscription = {
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+// ─── Phase 2 types ────────────────────────────────────────────────────────────
+
+export type Room = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  description: string | null;
+  capacity: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
+export type PaymentMethod = "cash" | "gcash" | "card" | "bank_transfer" | "philhealth" | "hmo";
+
+export type Invoice = {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  appointment_id: string | null;
+  invoice_number: string;
+  status: InvoiceStatus;
+  subtotal_centavos: number;
+  discount_centavos: number;
+  total_centavos: number;
+  notes: string | null;
+  due_date: string | null;
+  paid_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvoiceItem = {
+  id: string;
+  invoice_id: string;
+  clinic_id: string;
+  description: string;
+  quantity: number;
+  unit_price_centavos: number;
+  total_centavos: number;
+  created_at: string;
+};
+
+export type Payment = {
+  id: string;
+  clinic_id: string;
+  invoice_id: string;
+  patient_id: string;
+  amount_centavos: number;
+  method: PaymentMethod;
+  reference_no: string | null;
+  notes: string | null;
+  recorded_by: string | null;
+  created_at: string;
+};
+
+export type InvoiceWithRelations = Invoice & {
+  patients: Pick<Patient, "id" | "full_name" | "phone" | "email"> | null;
+  invoice_items: InvoiceItem[];
+  payments: Payment[];
+};
+
+export type ClinicalNote = {
+  id: string;
+  clinic_id: string;
+  appointment_id: string;
+  patient_id: string;
+  doctor_id: string | null;
+  subjective: string | null;
+  objective: string | null;
+  assessment: string | null;
+  plan: string | null;
+  is_locked: boolean;
+  locked_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FormFieldType = "text" | "textarea" | "select" | "radio" | "checkbox" | "date" | "number";
+
+export type FormField = {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  required: boolean;
+  options?: string[];
+};
+
+export type FormTemplate = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  description: string | null;
+  fields: FormField[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FormSubmission = {
+  id: string;
+  clinic_id: string;
+  template_id: string;
+  patient_id: string | null;
+  appointment_id: string | null;
+  token: string;
+  answers: Record<string, string | string[]>;
+  submitted_at: string | null;
+  created_at: string;
+};
+
+export type RecurrenceFrequency = "daily" | "weekly" | "biweekly" | "monthly";
+
+export type AppointmentRecurrence = {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  doctor_id: string | null;
+  service_id: string;
+  frequency: RecurrenceFrequency;
+  session_count: number;
+  start_at: string;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type TreatmentPackage = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  description: string | null;
+  session_count: number;
+  price_centavos: number;
+  validity_days: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PatientPackageStatus = "active" | "expired" | "exhausted" | "cancelled";
+
+export type PatientPackage = {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  package_id: string;
+  purchased_at: string;
+  expires_at: string;
+  sessions_total: number;
+  sessions_used: number;
+  status: PatientPackageStatus;
+  paid_amount_centavos: number;
+  payment_method: PaymentMethod | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PackageRedemption = {
+  id: string;
+  clinic_id: string;
+  patient_package_id: string;
+  appointment_id: string | null;
+  redeemed_at: string;
+  created_by: string | null;
+};
+
+export type QueueStatus = "waiting" | "called" | "serving" | "done" | "skipped";
+
+export type QueueEntry = {
+  id: string;
+  clinic_id: string;
+  patient_id: string | null;
+  doctor_id: string | null;
+  service_id: string | null;
+  queue_number: number;
+  status: QueueStatus;
+  patient_name: string;
+  notes: string | null;
+  queue_date: string;
+  called_at: string | null;
+  served_at: string | null;
+  done_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QueueEntryWithRelations = QueueEntry & {
+  doctors: Pick<Doctor, "id" | "full_name"> | null;
+  services: Pick<Service, "id" | "name"> | null;
 };

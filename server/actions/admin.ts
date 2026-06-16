@@ -21,7 +21,7 @@ async function requireSuperAdmin() {
 const updateSubscriptionSchema = z.object({
   clinicId: z.string().uuid(),
   planId: z.string().uuid().nullable(),
-  status: z.enum(["trial", "active", "past_due", "cancelled", "suspended"]),
+  status: z.enum(["free", "active", "past_due", "cancelled", "suspended"]),
   trialEndsAt: z.string().optional().transform((v) => v || null),
   periodStart: z.string().optional().transform((v) => v || null),
   periodEnd: z.string().optional().transform((v) => v || null),

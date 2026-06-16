@@ -13,7 +13,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
       <Card>
         <CardHeader>
           <CardTitle>Accept your invitation</CardTitle>
-          <CardDescription>Create a password to join your clinic on ClinicFlow AI PH.</CardDescription>
+          <CardDescription>Create a password to join your clinic on Book Clinic PH.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <AcceptInviteForm token={token} email={decodeURIComponent(email)} />
@@ -32,7 +32,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
     <Card>
       <CardHeader>
         <CardTitle>Create your clinic workspace</CardTitle>
-        <CardDescription>Includes a PHP 0 free trial and no payment method requirement.</CardDescription>
+        <CardDescription>Free to use with limited features. No credit card required.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <RegisterForm />

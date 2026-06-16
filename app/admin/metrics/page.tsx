@@ -15,7 +15,7 @@ export default async function AdminMetricsPage() {
 
   // Build subscription breakdown
   const subBreakdown = [
-    { label: "Trial", count: metrics.trial_subscriptions, bg: "bg-orange-50", text: "text-orange-700" },
+    { label: "Free Tier", count: metrics.free_subscriptions, bg: "bg-slate-50", text: "text-slate-600" },
     { label: "Active", count: metrics.active_subscriptions, bg: "bg-green-50", text: "text-green-700" },
     { label: "Past Due", count: metrics.past_due_subscriptions, bg: "bg-red-50", text: "text-red-700" },
     { label: "Cancelled", count: metrics.cancelled_subscriptions, bg: "bg-slate-50", text: "text-slate-600" }

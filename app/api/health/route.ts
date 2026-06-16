@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export function GET() {
   return NextResponse.json({
-    app: "ClinicFlow AI PH",
+    app: "Book Clinic PH",
     status: "ok",
     timezone: "Asia/Manila",
     country: "Philippines"

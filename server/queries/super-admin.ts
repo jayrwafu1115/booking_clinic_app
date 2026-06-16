@@ -6,7 +6,7 @@ export type PlatformMetrics = {
   active_clinics: number;
   inactive_clinics: number;
   suspended_clinics: number;
-  trial_subscriptions: number;
+  free_subscriptions: number;
   active_subscriptions: number;
   past_due_subscriptions: number;
   cancelled_subscriptions: number;

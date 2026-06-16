@@ -6,20 +6,23 @@ import { updateClinicSubscriptionAction } from "@/server/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { AdminClinicRow } from "@/server/queries/super-admin";
-import type { SubscriptionPlan } from "@/types/database";
+import type { ClinicSubscription, SubscriptionPlan } from "@/types/database";
+
+type SubDetail = Pick<ClinicSubscription, "clinic_id" | "plan_id" | "current_period_start" | "current_period_end" | "trial_ends_at">;
 
 type Props = {
   clinic: AdminClinicRow;
   plans: Pick<SubscriptionPlan, "id" | "name" | "price_monthly_centavos">[];
+  sub: SubDetail | null;
 };
 
-const STATUSES = ["trial", "active", "past_due", "cancelled", "suspended"] as const;
+const STATUSES = ["free", "active", "past_due", "cancelled", "suspended"] as const;
 
 function php(centavos: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0 }).format(centavos / 100);
 }
 
-export function EditSubscriptionForm({ clinic, plans }: Props) {
+export function EditSubscriptionForm({ clinic, plans, sub }: Props) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(updateClinicSubscriptionAction, {});
 
@@ -47,6 +50,7 @@ export function EditSubscriptionForm({ clinic, plans }: Props) {
               <label className="text-sm font-medium text-slate-700">Plan</label>
               <select
                 name="planId"
+                defaultValue={sub?.plan_id ?? ""}
                 className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
               >
                 <option value="">— No plan —</option>
@@ -62,7 +66,7 @@ export function EditSubscriptionForm({ clinic, plans }: Props) {
               <label className="text-sm font-medium text-slate-700">Status</label>
               <select
                 name="status"
-                defaultValue={clinic.subscription_status === "none" ? "trial" : clinic.subscription_status}
+                defaultValue={clinic.subscription_status === "none" ? "free" : clinic.subscription_status}
                 className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
               >
                 {STATUSES.map((s) => (
@@ -77,6 +81,7 @@ export function EditSubscriptionForm({ clinic, plans }: Props) {
                 <input
                   type="date"
                   name="periodStart"
+                  defaultValue={sub?.current_period_start ? sub.current_period_start.slice(0, 10) : ""}
                   className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
                 />
               </div>
@@ -85,19 +90,10 @@ export function EditSubscriptionForm({ clinic, plans }: Props) {
                 <input
                   type="date"
                   name="periodEnd"
+                  defaultValue={sub?.current_period_end ? sub.current_period_end.slice(0, 10) : ""}
                   className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
                 />
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Trial ends</label>
-              <input
-                type="date"
-                name="trialEndsAt"
-                defaultValue={clinic.trial_ends_at ? clinic.trial_ends_at.slice(0, 10) : ""}
-                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
-              />
             </div>
 
             {state.message && (

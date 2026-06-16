@@ -5,10 +5,15 @@ import { getAllClinicsAdmin } from "@/server/queries/super-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { EditSubscriptionForm } from "./edit-subscription-form";
-import type { SubscriptionPlan } from "@/types/database";
+import type { ClinicSubscription, SubscriptionPlan } from "@/types/database";
+
+type SubscriptionDetail = Pick<
+  ClinicSubscription,
+  "clinic_id" | "plan_id" | "current_period_start" | "current_period_end" | "trial_ends_at"
+>;
 
 const SUB_BADGE: Record<string, string> = {
-  trial:     "bg-orange-100 text-orange-700",
+  free:      "bg-slate-100 text-slate-600",
   active:    "bg-green-100 text-green-700",
   past_due:  "bg-red-100 text-red-700",
   cancelled: "bg-slate-100 text-slate-600",
@@ -21,17 +26,24 @@ export default async function AdminSubscriptionsPage() {
   if (!profile || profile.role !== "super_admin") redirect("/dashboard");
 
   const supabase = await createSupabaseServerClient();
-  const [clinics, plansResult] = await Promise.all([
+  const [clinics, plansResult, subsResult] = await Promise.all([
     getAllClinicsAdmin(),
     supabase
       .from("subscription_plans")
       .select("id, name, price_monthly_centavos")
       .eq("active", true)
       .order("price_monthly_centavos", { ascending: true })
-      .returns<Pick<SubscriptionPlan, "id" | "name" | "price_monthly_centavos">[]>()
+      .returns<Pick<SubscriptionPlan, "id" | "name" | "price_monthly_centavos">[]>(),
+    supabase
+      .from("clinic_subscriptions")
+      .select("clinic_id, plan_id, current_period_start, current_period_end, trial_ends_at")
+      .returns<SubscriptionDetail[]>(),
   ]);
 
   const plans = plansResult.data ?? [];
+  const subsByClinic = Object.fromEntries(
+    (subsResult.data ?? []).map((s) => [s.clinic_id, s])
+  );
 
   const summary = clinics.reduce<Record<string, number>>((acc, c) => {
     acc[c.subscription_status] = (acc[c.subscription_status] ?? 0) + 1;
@@ -69,6 +81,8 @@ export default async function AdminSubscriptionsPage() {
                   <th className="pb-3 pr-4">Clinic</th>
                   <th className="pb-3 pr-4">Plan</th>
                   <th className="pb-3 pr-4">Status</th>
+                  <th className="pb-3 pr-4">Period Start</th>
+                  <th className="pb-3 pr-4">Period End</th>
                   <th className="pb-3 pr-4">Trial Ends</th>
                   <th className="pb-3">Actions</th>
                 </tr>
@@ -87,10 +101,20 @@ export default async function AdminSubscriptionsPage() {
                       </span>
                     </td>
                     <td className="py-2.5 pr-4 text-slate-500">
+                      {subsByClinic[c.id]?.current_period_start
+                        ? new Date(subsByClinic[c.id]!.current_period_start!).toLocaleDateString("en-PH")
+                        : "—"}
+                    </td>
+                    <td className="py-2.5 pr-4 text-slate-500">
+                      {subsByClinic[c.id]?.current_period_end
+                        ? new Date(subsByClinic[c.id]!.current_period_end!).toLocaleDateString("en-PH")
+                        : "—"}
+                    </td>
+                    <td className="py-2.5 pr-4 text-slate-500">
                       {c.trial_ends_at ? new Date(c.trial_ends_at).toLocaleDateString("en-PH") : "—"}
                     </td>
                     <td className="py-2.5">
-                      <EditSubscriptionForm clinic={c} plans={plans} />
+                      <EditSubscriptionForm clinic={c} plans={plans} sub={subsByClinic[c.id] ?? null} />
                     </td>
                   </tr>
                 ))}

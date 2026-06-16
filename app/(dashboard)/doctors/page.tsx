@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plus, Stethoscope } from "lucide-react";
+import { IcalCopyButton } from "@/components/doctors/ical-copy-button";
 import { ConfirmActionForm } from "@/components/core/confirm-action-form";
 import { EmptyState } from "@/components/core/empty-state";
 import { ModuleHeader } from "@/components/core/module-header";
@@ -45,6 +46,9 @@ export default async function DoctorsPage() {
                     <p className="mt-1 text-sm text-slate-500">{doctor.specialization ?? "No specialization set"}</p>
                     <p className="mt-2 text-sm text-slate-600">{doctor.email ?? "No email"} · {doctor.phone ?? "No phone"}</p>
                     <p className="mt-1 text-xs text-slate-400">License: {doctor.license_no ?? "Not set"}</p>
+                    {doctor.ical_token && (
+                      <IcalCopyButton token={doctor.ical_token} />
+                    )}
                   </div>
                   {data.canManage ? (
                     <div className="flex flex-col gap-2 sm:flex-row md:flex-col">

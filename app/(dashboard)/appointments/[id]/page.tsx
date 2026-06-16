@@ -2,19 +2,24 @@ import Link from "next/link";
 import { CalendarClock, Pencil } from "lucide-react";
 import { AppointmentStatusBadge } from "@/components/appointments/status-badge";
 import { StatusTransitionForm } from "@/components/appointments/status-transition-form";
+import { SoapNoteForm } from "@/components/appointments/soap-note-form";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatManilaDateTime, titleize } from "@/lib/utils/format";
 import { getAppointmentData } from "@/server/queries/appointments";
+import { getNoteByAppointment } from "@/server/queries/notes";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppointmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const data = await getAppointmentData(id);
+    const [data, noteData] = await Promise.all([
+      getAppointmentData(id),
+      getNoteByAppointment(id),
+    ]);
 
     if (!data) {
       return <AccessCard title="Appointment unavailable" message="Sign in with a clinic account to view this appointment." />;
@@ -68,10 +73,27 @@ export default async function AppointmentDetailPage({ params }: { params: Promis
         </section>
         <Card>
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>Appointment Notes</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-6 text-slate-600">{appointment.notes ?? "No notes recorded."}</CardContent>
         </Card>
+
+        {noteData && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Clinical Note (SOAP)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SoapNoteForm
+                appointmentId={appointment.id}
+                patientId={appointment.patient_id}
+                doctorId={appointment.doctor_id}
+                note={noteData.note}
+                canManage={noteData.canManage}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   } catch (error) {

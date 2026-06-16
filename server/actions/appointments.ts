@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { getCurrentProfile, requireUser } from "@/lib/auth/session";
 import { assertPermission } from "@/lib/auth/permissions";
 import { ACTIVE_APPOINTMENT_STATUSES, STATUS_TRANSITIONS } from "@/lib/constants/appointments";
 import { sendAppointmentEmailById } from "@/lib/notifications/send-appointment-email";
+import { createFeedbackRequest } from "@/lib/notifications/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { addMinutesIso, getManilaParts, parseAppointmentStart } from "@/lib/utils/manila-time";
 import { appointmentRescheduleSchema, appointmentSchema, appointmentStatusSchema } from "@/lib/validations/core";
@@ -480,6 +482,8 @@ export async function updateAppointmentStatusAction(_: AppointmentActionState, f
       await sendAppointmentEmailById(appointment.id, "appointment_cancelled", {
         cancellationReason: parsed.data.cancellationReason ?? null
       });
+    } else if (nextStatus === "completed") {
+      void createFeedbackRequest(appointment.id, clinicId).catch(() => {});
     }
 
     revalidatePath("/appointments");
@@ -487,6 +491,109 @@ export async function updateAppointmentStatusAction(_: AppointmentActionState, f
     revalidatePath("/calendar");
     revalidatePath("/dashboard");
     return { success: true, message: "Appointment status updated." };
+  } catch (error) {
+    return toState(error);
+  }
+}
+
+export async function createRecurringAppointmentsAction(
+  _: AppointmentActionState,
+  formData: FormData
+): Promise<AppointmentActionState> {
+  try {
+    const schema = z.object({
+      patientId: z.string().uuid(),
+      doctorId: z.string().uuid().optional().or(z.literal("")).transform((v) => v || null),
+      serviceId: z.string().uuid(),
+      startAt: z.string().min(1),
+      frequency: z.enum(["daily", "weekly", "biweekly", "monthly"]),
+      sessionCount: z.coerce.number().int().min(2).max(52),
+      notes: z.string().trim().optional().transform((v) => v || null),
+    });
+
+    const parsed = schema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return { message: parsed.error.errors[0]?.message ?? "Invalid recurrence data." };
+
+    const { user, clinicId } = await getAppointmentActionContext();
+    const firstStartAt = parseAppointmentStart(parsed.data.startAt);
+
+    const slot = await validateAppointmentSlot({
+      clinicId,
+      patientId: parsed.data.patientId,
+      doctorId: parsed.data.doctorId,
+      serviceId: parsed.data.serviceId,
+      startAt: firstStartAt,
+    });
+
+    const supabase = await createSupabaseServerClient();
+
+    // Create the recurrence group record
+    const { data: recurrence, error: recErr } = await supabase
+      .from("appointment_recurrences")
+      .insert({
+        clinic_id: clinicId,
+        patient_id: slot.patient.id,
+        doctor_id: slot.doctor?.id ?? null,
+        service_id: slot.service.id,
+        frequency: parsed.data.frequency,
+        session_count: parsed.data.sessionCount,
+        start_at: slot.startAt,
+        created_by: user.id,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (recErr || !recurrence) return { message: recErr?.message ?? "Could not create recurrence." };
+
+    // Generate all appointment datetimes
+    const startDate = new Date(slot.startAt);
+    const appts: { start: string; end: string }[] = [];
+
+    for (let i = 0; i < parsed.data.sessionCount; i++) {
+      const d = new Date(startDate);
+      if (parsed.data.frequency === "daily")    d.setDate(d.getDate() + i);
+      if (parsed.data.frequency === "weekly")   d.setDate(d.getDate() + i * 7);
+      if (parsed.data.frequency === "biweekly") d.setDate(d.getDate() + i * 14);
+      if (parsed.data.frequency === "monthly")  d.setMonth(d.getMonth() + i);
+      const s = d.toISOString();
+      appts.push({ start: s, end: addMinutesIso(s, slot.service.duration_minutes) });
+    }
+
+    const { error: insertErr } = await supabase.from("appointments").insert(
+      appts.map((a) => ({
+        clinic_id: clinicId,
+        patient_id: slot.patient.id,
+        doctor_id: slot.doctor?.id ?? null,
+        service_id: slot.service.id,
+        recurrence_id: recurrence.id,
+        status: "booked" as const,
+        source: "manual" as const,
+        start_at: a.start,
+        end_at: a.end,
+        notes: parsed.data.notes,
+        created_by: user.id,
+      }))
+    );
+
+    if (insertErr) return { message: insertErr.message };
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "appointment.recurring_created",
+      entityType: "appointment_recurrence",
+      entityId: recurrence.id,
+      metadata: {
+        patient: slot.patient.full_name,
+        service: slot.service.name,
+        frequency: parsed.data.frequency,
+        session_count: parsed.data.sessionCount,
+      },
+    });
+
+    revalidatePath("/appointments");
+    revalidatePath("/calendar");
+    return { success: true, message: `${parsed.data.sessionCount} recurring appointments created.` };
   } catch (error) {
     return toState(error);
   }

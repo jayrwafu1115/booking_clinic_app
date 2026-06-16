@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { profileHasPermission } from "@/lib/auth/permissions";
 import { APPOINTMENT_STATUSES } from "@/lib/constants/appointments";
@@ -65,7 +66,8 @@ function baseAppointmentSelect() {
   `;
 }
 
-export async function getAppointmentOptions(): Promise<({ profile: Profile; canManage: boolean } & AppointmentOptions) | null> {
+// Cached per-request: patients/doctors/services are stable during a render tree.
+export const getAppointmentOptions = cache(async (): Promise<({ profile: Profile; canManage: boolean } & AppointmentOptions) | null> => {
   const context = await getAppointmentContext();
   if (!context) {
     return null;
@@ -97,7 +99,7 @@ export async function getAppointmentOptions(): Promise<({ profile: Profile; canM
     doctors: doctorsResult.data ?? [],
     services: servicesResult.data ?? []
   };
-}
+});
 
 export async function getAppointmentsData(filters: AppointmentFilters = {}) {
   const context = await getAppointmentContext();
@@ -131,12 +133,17 @@ export async function getAppointmentsData(filters: AppointmentFilters = {}) {
   }
 
   if (!context.canViewAll) {
-    const assignedDoctorIds = await getAssignedDoctorIds(context.profile);
+    // Fetch doctor IDs and form options concurrently; both are independent of each other.
+    const [assignedDoctorIds, options] = await Promise.all([
+      getAssignedDoctorIds(context.profile),
+      getAppointmentOptions()
+    ]);
+
     if (assignedDoctorIds.length === 0) {
       return {
         profile: context.profile,
         appointments: [],
-        options: await getAppointmentOptions(),
+        options,
         page,
         pageSize,
         total: 0,
@@ -146,10 +153,31 @@ export async function getAppointmentsData(filters: AppointmentFilters = {}) {
       };
     }
 
-    request = request.in("doctor_id", assignedDoctorIds);
+    const { data, error, count } = await request.in("doctor_id", assignedDoctorIds).returns<AppointmentWithRelations[]>();
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      profile: context.profile,
+      appointments: data ?? [],
+      options,
+      page,
+      pageSize,
+      total: count ?? 0,
+      totalPages: Math.max(Math.ceil((count ?? 0) / pageSize), 1),
+      filters,
+      canManage: context.canManage
+    };
   }
 
-  const { data, error, count } = await request.returns<AppointmentWithRelations[]>();
+  // canViewAll: run the appointments query and options fetch in parallel.
+  const [queryResult, options] = await Promise.all([
+    request.returns<AppointmentWithRelations[]>(),
+    getAppointmentOptions()
+  ]);
+
+  const { data, error, count } = queryResult;
   if (error) {
     throw new Error(error.message);
   }
@@ -157,7 +185,7 @@ export async function getAppointmentsData(filters: AppointmentFilters = {}) {
   return {
     profile: context.profile,
     appointments: data ?? [],
-    options: await getAppointmentOptions(),
+    options,
     page,
     pageSize,
     total: count ?? 0,
@@ -174,22 +202,42 @@ export async function getAppointmentData(id: string) {
   }
 
   const supabase = await createSupabaseServerClient();
-  let request = supabase.from("appointments").select(baseAppointmentSelect()).eq("clinic_id", context.clinicId).eq("id", id);
+  const request = supabase
+    .from("appointments")
+    .select(baseAppointmentSelect())
+    .eq("clinic_id", context.clinicId)
+    .eq("id", id);
 
   if (!context.canViewAll) {
-    const assignedDoctorIds = await getAssignedDoctorIds(context.profile);
+    // Fetch doctor IDs and form options concurrently.
+    const [assignedDoctorIds, options] = await Promise.all([
+      getAssignedDoctorIds(context.profile),
+      getAppointmentOptions()
+    ]);
+
     if (assignedDoctorIds.length === 0) {
       throw new Error("Appointment not found.");
     }
-    request = request.in("doctor_id", assignedDoctorIds);
+
+    const { data, error } = await request.in("doctor_id", assignedDoctorIds).single<AppointmentWithRelations>();
+    if (error || !data) {
+      throw new Error(error?.message ?? "Appointment not found.");
+    }
+
+    return { profile: context.profile, appointment: data, options, canManage: context.canManage };
   }
 
-  const { data, error } = await request.single<AppointmentWithRelations>();
+  // canViewAll: run appointment fetch and options fetch in parallel.
+  const [{ data, error }, options] = await Promise.all([
+    request.single<AppointmentWithRelations>(),
+    getAppointmentOptions()
+  ]);
+
   if (error || !data) {
     throw new Error(error?.message ?? "Appointment not found.");
   }
 
-  return { profile: context.profile, appointment: data, options: await getAppointmentOptions(), canManage: context.canManage };
+  return { profile: context.profile, appointment: data, options, canManage: context.canManage };
 }
 
 export async function getCalendarAppointmentsData(filters: AppointmentFilters = {}) {
@@ -219,14 +267,36 @@ export async function getCalendarAppointmentsData(filters: AppointmentFilters = 
   }
 
   if (!context.canViewAll) {
-    const assignedDoctorIds = await getAssignedDoctorIds(context.profile);
+    // Fetch doctor IDs and form options concurrently.
+    const [assignedDoctorIds, options] = await Promise.all([
+      getAssignedDoctorIds(context.profile),
+      getAppointmentOptions()
+    ]);
+
     if (assignedDoctorIds.length === 0) {
-      return { profile: context.profile, appointments: [], options: await getAppointmentOptions(), filters, canManage: context.canManage };
+      return { profile: context.profile, appointments: [], options, filters, canManage: context.canManage };
     }
-    request = request.in("doctor_id", assignedDoctorIds);
+
+    const { data, error } = await request.in("doctor_id", assignedDoctorIds).returns<AppointmentWithRelations[]>();
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      profile: context.profile,
+      appointments: data ?? [],
+      options,
+      filters,
+      canManage: context.canManage
+    };
   }
 
-  const { data, error } = await request.returns<AppointmentWithRelations[]>();
+  // canViewAll: run appointments query and options fetch in parallel.
+  const [{ data, error }, options] = await Promise.all([
+    request.returns<AppointmentWithRelations[]>(),
+    getAppointmentOptions()
+  ]);
+
   if (error) {
     throw new Error(error.message);
   }
@@ -234,7 +304,7 @@ export async function getCalendarAppointmentsData(filters: AppointmentFilters = 
   return {
     profile: context.profile,
     appointments: data ?? [],
-    options: await getAppointmentOptions(),
+    options,
     filters,
     canManage: context.canManage
   };

@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ClinicFlow AI PH",
+  title: "Book Clinic PH",
   description: "Philippines clinic appointment booking SaaS"
 };
 

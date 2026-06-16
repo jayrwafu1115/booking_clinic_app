@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Search, UserRound } from "lucide-react";
+import { Download, Plus, Search, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/core/empty-state";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
@@ -37,6 +37,16 @@ export default async function PatientsPage({ searchParams }: { searchParams?: Pr
           action={data.canManage ? { href: "/patients/new", label: "New patient", icon: Plus } : undefined}
           icon={UserRound}
         />
+        {data.canManage && (
+          <div className="flex justify-end">
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href="/api/export/patients" download>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </a>
+            </Button>
+          </div>
+        )}
 
         <Card>
           <CardContent className="p-4">

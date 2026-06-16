@@ -17,7 +17,7 @@ export type ResendSendResult = {
 
 export async function sendResendEmail(payload: ResendEmailPayload): Promise<ResendSendResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const platformFrom = process.env.RESEND_FROM_EMAIL ?? "ClinicFlow AI PH <notifications@clinicflowaiph.com>";
+  const platformFrom = process.env.RESEND_FROM_EMAIL ?? "Book Clinic PH <notifications@bookclinicph.com>";
 
   if (!apiKey) {
     return { success: false, error: "RESEND_API_KEY is not configured." };

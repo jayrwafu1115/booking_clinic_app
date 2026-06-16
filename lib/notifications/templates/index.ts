@@ -34,7 +34,7 @@ function layout(title: string, previewText: string, body: string): string {
           <!-- Header -->
           <tr>
             <td style="background-color:#1d4ed8;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
-              <p style="margin:0;color:#bfdbfe;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">ClinicFlow AI PH</p>
+              <p style="margin:0;color:#bfdbfe;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">Book Clinic PH</p>
               <h1 style="margin:8px 0 0;color:#ffffff;font-size:22px;font-weight:700;line-height:1.3;">${title}</h1>
             </td>
           </tr>
@@ -48,7 +48,7 @@ function layout(title: string, previewText: string, body: string): string {
           <tr>
             <td style="background-color:#f8fafc;border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;">
               <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">
-                This is an automated message from <strong>ClinicFlow AI PH</strong>.<br/>
+                This is an automated message from <strong>Book Clinic PH</strong>.<br/>
                 Please do not reply to this email. Contact the clinic directly for changes.
               </p>
             </td>

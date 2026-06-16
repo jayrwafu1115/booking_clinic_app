@@ -5,13 +5,20 @@ import { usePathname } from "next/navigation";
 import {
   Bot,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   CreditCard,
+  DoorOpen,
   LayoutDashboard,
   LineChart,
+  Package,
+  Receipt,
+  RefreshCw,
   Settings,
+  ShieldCheck,
   Sparkles,
   Stethoscope,
+  Ticket,
   UserCog,
   Users,
   Wallet
@@ -55,10 +62,19 @@ const sections: NavSection[] = [
         icon: CalendarDays,
         permissions: ["appointments:view_all", "appointments:view_assigned"]
       },
+      { href: "/appointments/waitlist", label: "Waitlist", icon: ClipboardList, permissions: ["appointments:manage"] },
+      { href: "/appointments/recurring", label: "Recurring", icon: RefreshCw, permissions: ["appointments:manage"] },
+      { href: "/queue", label: "Queue", icon: Ticket, permissions: ["queue:view"] },
       { href: "/patients", label: "Patients", icon: Users, permissions: ["patients:view"] },
       { href: "/services", label: "Services", icon: Stethoscope, permissions: ["services:view"] },
       { href: "/doctors", label: "Doctors", icon: UserCog, permissions: ["doctors:view"] },
       { href: "/availability", label: "Availability", icon: CalendarDays, permissions: ["availability:view"] }
+    ]
+  },
+  {
+    label: "Clinical",
+    items: [
+      { href: "/forms", label: "Intake Forms", icon: ClipboardCheck, permissions: ["forms:view"] },
     ]
   },
   {
@@ -74,6 +90,8 @@ const sections: NavSection[] = [
   {
     label: "Business",
     items: [
+      { href: "/invoices", label: "Invoices", icon: Receipt, permissions: ["invoices:view"] },
+      { href: "/packages", label: "Packages", icon: Package, permissions: ["packages:view"] },
       { href: "/billing", label: "Billing & Plans", icon: CreditCard, permissions: ["billing:view"] },
       { href: "/billing/payments", label: "Payments", icon: Wallet, permissions: ["billing:view"] },
       { href: "/reports", label: "Reports", icon: LineChart, permissions: ["billing:view"] }
@@ -90,6 +108,8 @@ const sections: NavSection[] = [
         icon: Sparkles,
         permissions: ["clinic_settings:update"]
       },
+      { href: "/settings/rooms", label: "Rooms", icon: DoorOpen, permissions: ["rooms:manage"] },
+      { href: "/settings/security", label: "Security & 2FA", icon: ShieldCheck },
       { href: "/settings/audit-logs", label: "Audit Logs", icon: ClipboardList, permissions: ["audit_logs:view"] }
     ]
   }
@@ -120,7 +140,7 @@ function clinicInitials(name: string) {
 
 export function Sidebar({ role, aiEnabled, clinicBrand }: SidebarProps) {
   const pathname = usePathname();
-  const brandName = clinicBrand?.name ?? "ClinicFlow AI PH";
+  const brandName = clinicBrand?.name ?? "Book Clinic PH";
 
   return (
     <aside className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-5">

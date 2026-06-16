@@ -86,6 +86,21 @@ export async function createPatientAction(_: CoreActionState, formData: FormData
 
     const { user, clinicId } = await getActionContext("patients:manage");
     const supabase = await createSupabaseServerClient();
+
+    const [planFeatures, { count: patientCount }] = await Promise.all([
+      getClinicPlanFeatures(),
+      supabase
+        .from("patients")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinicId)
+    ]);
+
+    if (patientCount !== null && patientCount >= planFeatures.maxPatients) {
+      return {
+        message: `Your plan allows a maximum of ${planFeatures.maxPatients} patients. Upgrade to Pro to add more.`
+      };
+    }
+
     const { data, error } = await supabase
       .from("patients")
       .insert({
@@ -368,6 +383,22 @@ export async function createServiceAction(_: CoreActionState, formData: FormData
 
     const { user, clinicId } = await getActionContext("services:manage");
     const supabase = await createSupabaseServerClient();
+
+    const [planFeatures, { count: serviceCount }] = await Promise.all([
+      getClinicPlanFeatures(),
+      supabase
+        .from("services")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinicId)
+        .eq("active", true)
+    ]);
+
+    if (serviceCount !== null && serviceCount >= planFeatures.maxServices) {
+      return {
+        message: `Your plan allows a maximum of ${planFeatures.maxServices} services. Upgrade to Pro to add more.`
+      };
+    }
+
     const { data, error } = await supabase
       .from("services")
       .insert({

@@ -196,18 +196,18 @@ export async function inviteUserAction(_: SettingsActionState, formData: FormDat
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const inviteUrl = `${appUrl}/register?token=${token}&email=${encodeURIComponent(parsed.data.email.toLowerCase())}`;
-    const clinicName = clinic?.name ?? "ClinicFlow AI PH";
+    const clinicName = clinic?.name ?? "Book Clinic PH";
     const roleName = parsed.data.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
     await sendResendEmail({
       to: parsed.data.email,
-      subject: `You've been invited to join ${clinicName} on ClinicFlow AI PH`,
+      subject: `You've been invited to join ${clinicName} on Book Clinic PH`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e293b">
           <h2 style="margin:0 0 8px;font-size:20px">You're invited to ${clinicName}</h2>
           <p style="margin:0 0 24px;color:#475569">
             You have been invited to join <strong>${clinicName}</strong> as a
-            <strong>${roleName}</strong> on ClinicFlow AI PH.
+            <strong>${roleName}</strong> on Book Clinic PH.
           </p>
           <a href="${inviteUrl}"
              style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px">
@@ -477,18 +477,18 @@ export async function resendInviteAction(_: SettingsActionState, formData: FormD
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const inviteUrl = `${appUrl}/register?token=${newToken}&email=${encodeURIComponent(invite.email)}`;
-    const clinicName = clinic?.name ?? "ClinicFlow AI PH";
+    const clinicName = clinic?.name ?? "Book Clinic PH";
     const roleName = invite.role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
     await sendResendEmail({
       to: invite.email,
-      subject: `Reminder: You've been invited to join ${clinicName} on ClinicFlow AI PH`,
+      subject: `Reminder: You've been invited to join ${clinicName} on Book Clinic PH`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e293b">
           <h2 style="margin:0 0 8px;font-size:20px">Reminder: You're invited to ${clinicName}</h2>
           <p style="margin:0 0 24px;color:#475569">
             This is a reminder that you have been invited to join <strong>${clinicName}</strong> as a
-            <strong>${roleName}</strong> on ClinicFlow AI PH.
+            <strong>${roleName}</strong> on Book Clinic PH.
           </p>
           <a href="${inviteUrl}"
              style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px">
