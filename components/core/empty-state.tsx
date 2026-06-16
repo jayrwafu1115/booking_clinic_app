@@ -5,7 +5,7 @@ export function EmptyState({ icon: Icon, title, description }: { icon: LucideIco
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center p-10 text-center">
-        <div className="rounded-2xl bg-blue-50 p-4 text-blue-600">
+        <div className="rounded-2xl bg-blue-50 p-4 text-blue-600" aria-hidden="true">
           <Icon className="h-6 w-6" />
         </div>
         <p className="mt-4 text-base font-semibold text-slate-950">{title}</p>

@@ -63,8 +63,16 @@ export function PackageCard({
                 Sell
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={expanded ? "Collapse sold packages" : "Expand sold packages"}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded
+                ? <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
             </Button>
           </div>
         </div>

@@ -43,8 +43,10 @@ export function DateRangeFilter({
         {PERIODS.filter((p) => p.value !== "custom").map((p) => (
           <button
             key={p.value}
+            type="button"
+            aria-pressed={period === p.value}
             onClick={() => updateParams({ period: p.value, from: null, to: null })}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
               period === p.value
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100"
@@ -63,7 +65,7 @@ export function DateRangeFilter({
           onChange={(e) =>
             updateParams({ period: "custom", from: e.target.value || null })
           }
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
         />
         <span className="text-sm text-slate-400">–</span>
         <input
@@ -72,7 +74,7 @@ export function DateRangeFilter({
           onChange={(e) =>
             updateParams({ period: "custom", to: e.target.value || null })
           }
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
         />
       </div>
     </div>

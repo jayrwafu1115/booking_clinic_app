@@ -10,17 +10,28 @@ export async function DashboardShell({ children }: { children: React.ReactNode }
     getCurrentProfile(),
     getRecentNotifications(),
     getClinicPlanFeatures(),
-    getClinicBrand()
+    getClinicBrand(),
   ]);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-white lg:block print:hidden">
-        <Sidebar role={profile?.role ?? null} aiEnabled={planFeatures.aiEnabled} clinicBrand={clinicBrand} />
+      <div className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-white lg:flex lg:flex-col">
+        <Sidebar
+          role={profile?.role ?? null}
+          aiEnabled={planFeatures.aiEnabled}
+          clinicBrand={clinicBrand}
+          profile={profile}
+          notifications={notifications}
+        />
       </div>
       <div className="lg:pl-72 print:pl-0">
         <div className="print:hidden">
-          <Topbar profile={profile} notifications={notifications} aiEnabled={planFeatures.aiEnabled} clinicBrand={clinicBrand} />
+          <Topbar
+            profile={profile}
+            notifications={notifications}
+            aiEnabled={planFeatures.aiEnabled}
+            clinicBrand={clinicBrand}
+          />
         </div>
         <main className="px-4 py-6 lg:px-8">{children}</main>
       </div>

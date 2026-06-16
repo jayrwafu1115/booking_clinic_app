@@ -205,39 +205,151 @@ Copy `.env.example` to `.env.local` and fill in all values:
 3. Set `AI_PROVIDER=ollama` and `OLLAMA_BASE_URL=http://localhost:11434`.
 4. Clinics select the model from the Ollama model list in AI Settings.
 
-## Deployment (Vercel)
+## Deployment (Hostinger)
 
-### 1. Import project
+The app is built with `output: "standalone"` so it runs as a plain Node.js server — no Vercel or edge infrastructure needed.
 
-1. Push the repo to GitHub.
-2. Go to [vercel.com](https://vercel.com) → **New Project** → import the repo.
+### 1. Point your domain and set up a Node.js app
 
-### 2. Set environment variables
+In **Hostinger hPanel**:
+1. Go to **Websites → Manage → Node.js**.
+2. Create a new Node.js application, set the **Node.js version** to 18 or 20, and set the **Application root** to your project folder.
+3. Set the **Application startup file** to `.next/standalone/server.js`.
+4. Note the assigned port (e.g. `3000` or Hostinger may assign one automatically).
 
-In Vercel → **Project Settings → Environment Variables**, add all variables from `.env.example`. Mark sensitive variables as **Sensitive** (they will not be visible after saving).
+For a **Hostinger VPS** with root access, install PM2 globally:
+```bash
+npm install -g pm2
+```
 
-Key variables that must be set before the first deployment:
-- All `NEXT_PUBLIC_SUPABASE_*` and `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENAI_API_KEY` or Ollama setup
-- `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
-- `PAYMONGO_SECRET_KEY` and `PAYMONGO_WEBHOOK_SECRET`
-- `NEXT_PUBLIC_APP_URL` set to your Vercel domain
+---
 
-### 3. Deploy
+### 2. Upload the project
 
-Vercel auto-deploys on push to `main`. The first deployment runs `npm run build`.
+**Option A — Git (recommended for VPS):**
+```bash
+git clone <your-repo-url> /home/user/clinic-app
+cd /home/user/clinic-app
+```
 
-### 4. Configure Supabase Auth redirect URLs
+**Option B — File Manager / FTP:**  
+Upload the entire project directory to your Hostinger hosting folder.
+
+---
+
+### 3. Install dependencies and build
+
+```bash
+cd /path/to/project
+npm install
+npm run build
+```
+
+After the build, copy the static assets into the standalone bundle:
+
+```bash
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+```
+
+> **Why?** `output: "standalone"` creates a self-contained `.next/standalone/server.js` that only includes the Node.js server. Static files must be copied in manually.
+
+---
+
+### 4. Create the environment file
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your real credentials. Key variables:
+
+```env
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+OPENAI_API_KEY=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL="Book Clinic PH <noreply@yourdomain.com>"
+PAYMONGO_SECRET_KEY=
+PAYMONGO_WEBHOOK_SECRET=
+CRON_SECRET=your-random-secret-here
+PORT=3000
+```
+
+> **Never** commit `.env` to git. All secret keys stay server-side only.
+
+---
+
+### 5. Start the server
+
+**Hostinger hPanel Node.js:** Click **Restart** in the Node.js panel — it starts `.next/standalone/server.js` automatically.
+
+**VPS with PM2:**
+```bash
+PORT=3000 pm2 start .next/standalone/server.js --name "clinic-app"
+pm2 save          # persist across reboots
+pm2 startup       # configure PM2 to start on system boot
+```
+
+---
+
+### 6. Configure Supabase Auth redirect URLs
 
 In Supabase → **Authentication → URL Configuration**, add:
 ```
-https://yourapp.vercel.app/auth/callback
-https://yourapp.vercel.app/**
+https://yourdomain.com/auth/callback
+https://yourdomain.com/**
 ```
 
-### 5. Run database migrations
+---
 
-After the first successful deployment, run migrations against your Supabase project (see [Database Setup](#database-setup)).
+### 7. Run database migrations
+
+Run migrations against your Supabase project (see [Database Setup](#database-setup)).
+
+---
+
+### 8. Set up PayMongo webhook
+
+In PayMongo → **Developers → Webhooks**, create a webhook pointing to:
+```
+https://yourdomain.com/api/paymongo/webhook
+```
+Subscribe to: `payment.paid`, `payment.failed`, `checkout_session.payment.paid`, `checkout_session.payment.expired`.
+
+---
+
+### 9. Set up the appointment reminder cron job
+
+In **Hostinger hPanel → Cron Jobs**, add a job that runs every hour:
+
+| Field | Value |
+|-------|-------|
+| Command | `curl -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://yourdomain.com/api/cron/appointment-reminders` |
+| Schedule | Every hour (`0 * * * *`) |
+
+On a **VPS**, add to crontab (`crontab -e`):
+```
+0 * * * * curl -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://yourdomain.com/api/cron/appointment-reminders
+```
+
+Replace `YOUR_CRON_SECRET` with the value of `CRON_SECRET` in your `.env`.
+
+---
+
+### Re-deploying updates
+
+```bash
+git pull
+npm install
+npm run build
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+pm2 restart clinic-app    # VPS
+# or click Restart in hPanel Node.js
+```
 
 ## Project Structure
 
@@ -299,21 +411,14 @@ npm run typecheck  # TypeScript type check (no emit)
 
 ## Rate Limiting
 
-The in-memory rate limiter in `lib/rate-limit.ts` works for single-instance deployments. For multi-instance production (Vercel serverless), replace it with [Upstash Redis](https://upstash.com):
+`lib/rate-limit.ts` uses an in-memory sliding window for single-instance deployments (Hostinger VPS with PM2). To support multiple instances, set:
 
-```bash
-npm install @upstash/ratelimit @upstash/redis
+```env
+UPSTASH_REDIS_REST_URL=https://...upstash.io
+UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-Update `lib/rate-limit.ts` to use `@upstash/ratelimit` with a sliding window. Store `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as env vars.
-
-## Known Limitations
-
-- **Appointment reminder cron** — `notify_appointment_reminder` preference is stored but no scheduler fires it. Add a Vercel Cron or Supabase pg_cron job.
-- **SMS** — Stub only. Wire Semaphore/Twilio/Infobip in `lib/notifications/sms/`.
-- **Patient confirmation portal** — `/confirm/[token]` is not yet built. Emails link to it but it returns 404.
-- **Rate limiter** — In-memory, resets per instance. Upgrade to Upstash Redis for multi-instance deployments.
-- **Confirm/reschedule portal** — Not yet built.
+Create a free Redis database at [console.upstash.com](https://console.upstash.com). The rate limiter will switch to Upstash automatically when those env vars are present — no code change needed.
 
 ## Security Notes
 

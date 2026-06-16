@@ -3,12 +3,15 @@ import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { profileHasPermission } from "@/lib/auth/permissions";
 import { APPOINTMENT_STATUSES } from "@/lib/constants/appointments";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { manilaLocalToUtcIso } from "@/lib/utils/manila-time";
 import type { AppointmentStatus, AppointmentWithRelations, Doctor, Patient, Profile, Service } from "@/types/database";
 
 export type AppointmentFilters = {
   doctorId?: string;
   serviceId?: string;
   status?: AppointmentStatus;
+  dateFrom?: string;
+  dateTo?: string;
   page?: string;
 };
 
@@ -130,6 +133,14 @@ export async function getAppointmentsData(filters: AppointmentFilters = {}) {
 
   if (filters.serviceId) {
     request = request.eq("service_id", filters.serviceId);
+  }
+
+  if (filters.dateFrom) {
+    request = request.gte("start_at", manilaLocalToUtcIso(`${filters.dateFrom}T00:00`));
+  }
+
+  if (filters.dateTo) {
+    request = request.lte("start_at", manilaLocalToUtcIso(`${filters.dateTo}T23:59`));
   }
 
   if (!context.canViewAll) {

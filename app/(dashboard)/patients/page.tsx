@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { Download, Plus, Search, UserRound } from "lucide-react";
+import { ChevronRight, Download, Plus, Search, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/core/empty-state";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getPatientsData } from "@/server/queries/core";
 import { formatManilaDate, titleize } from "@/lib/utils/format";
@@ -13,9 +12,7 @@ export const dynamic = "force-dynamic";
 
 function paginationHref(page: number, query: string) {
   const params = new URLSearchParams();
-  if (query) {
-    params.set("q", query);
-  }
+  if (query) params.set("q", query);
   params.set("page", String(page));
   return `/patients?${params.toString()}`;
 }
@@ -37,104 +34,98 @@ export default async function PatientsPage({ searchParams }: { searchParams?: Pr
           action={data.canManage ? { href: "/patients/new", label: "New patient", icon: Plus } : undefined}
           icon={UserRound}
         />
-        {data.canManage && (
-          <div className="flex justify-end">
-            <Button asChild variant="outline" size="sm" className="gap-2">
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-3">
+          <form className="relative flex-1 max-w-sm" method="get">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input className="pl-9" name="q" defaultValue={data.query} placeholder="Search name, phone, or email…" />
+          </form>
+          {data.canManage && (
+            <Button asChild variant="outline" size="sm" className="gap-2 flex-shrink-0">
               <a href="/api/export/patients" download>
                 <Download className="h-4 w-4" />
                 Export CSV
               </a>
             </Button>
-          </div>
-        )}
-
-        <Card>
-          <CardContent className="p-4">
-            <form className="flex flex-col gap-3 sm:flex-row" method="get">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input className="pl-9" name="q" defaultValue={data.query} placeholder="Search name, phone, or email" />
-              </div>
-              <Button type="submit">Search</Button>
-            </form>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
         {data.patients.length === 0 ? (
           <EmptyState icon={UserRound} title="No patients found" description="Create your first patient record or adjust the search terms." />
         ) : (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {data.patients.map((patient) => (
-                <Link key={patient.id} href={`/patients/${patient.id}`} className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Card className="h-full transition-colors hover:border-blue-200">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-slate-950">{patient.full_name}</p>
-                          <p className="mt-1 text-sm text-slate-500">{patient.phone}</p>
-                        </div>
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                          {patient.gender ? titleize(patient.gender) : "Patient"}
-                        </span>
-                      </div>
-                      <p className="mt-4 text-sm text-slate-500">{patient.email ?? "No email on file"}</p>
-                      <p className="mt-2 text-xs text-slate-400">Created {formatManilaDate(patient.created_at)}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </section>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Patient Table</CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm">
-                  <thead className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    <tr className="border-b border-border">
-                      <th className="py-3 pr-4 font-semibold">Name</th>
-                      <th className="py-3 pr-4 font-semibold">Phone</th>
-                      <th className="py-3 pr-4 font-semibold">Email</th>
-                      <th className="py-3 pr-4 font-semibold">Birth Date</th>
-                      <th className="py-3 pr-4 font-semibold">Created</th>
+            {/* Vercel-style table */}
+            <div className="overflow-hidden rounded-xl border border-border bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-slate-50/60">
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 hidden sm:table-cell">Phone</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 hidden md:table-cell">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 hidden lg:table-cell">Birth Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 hidden xl:table-cell">Created</th>
+                      <th className="w-8 px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody>
                     {data.patients.map((patient) => (
-                      <tr key={patient.id} className="border-b border-border last:border-0">
-                        <td className="py-3 pr-4 font-medium text-slate-950">
-                          <Link className="text-blue-600 hover:text-blue-700" href={`/patients/${patient.id}`}>
-                            {patient.full_name}
+                      <tr key={patient.id} className="group border-b border-border last:border-0 transition-colors hover:bg-slate-50">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+                              <UserRound className="h-3.5 w-3.5 text-blue-600" />
+                            </div>
+                            <div>
+                              <Link
+                                className="font-medium text-slate-900 hover:text-blue-600"
+                                href={`/patients/${patient.id}`}
+                              >
+                                {patient.full_name}
+                              </Link>
+                              {patient.gender && (
+                                <p className="text-xs text-slate-400">{titleize(patient.gender)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="hidden px-4 py-3.5 text-slate-500 sm:table-cell">{patient.phone}</td>
+                        <td className="hidden px-4 py-3.5 text-slate-500 md:table-cell">{patient.email ?? <span className="text-slate-300">—</span>}</td>
+                        <td className="hidden px-4 py-3.5 text-slate-500 lg:table-cell">{formatManilaDate(patient.birth_date)}</td>
+                        <td className="hidden px-4 py-3.5 text-slate-500 xl:table-cell">{formatManilaDate(patient.created_at)}</td>
+                        <td className="px-4 py-3.5">
+                          <Link href={`/patients/${patient.id}`}>
+                            <ChevronRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-slate-500" />
                           </Link>
                         </td>
-                        <td className="py-3 pr-4 text-slate-600">{patient.phone}</td>
-                        <td className="py-3 pr-4 text-slate-600">{patient.email ?? "None"}</td>
-                        <td className="py-3 pr-4 text-slate-600">{formatManilaDate(patient.birth_date)}</td>
-                        <td className="py-3 pr-4 text-slate-600">{formatManilaDate(patient.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </CardContent>
-            </Card>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">
-                Page {data.page} of {data.totalPages} · {data.total} patients
-              </p>
-              <div className="flex gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link aria-disabled={data.page <= 1} href={paginationHref(Math.max(data.page - 1, 1), data.query)}>
-                    Previous
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link aria-disabled={data.page >= data.totalPages} href={paginationHref(Math.min(data.page + 1, data.totalPages), data.query)}>
-                    Next
-                  </Link>
-                </Button>
+              {/* Table footer with pagination */}
+              <div className="flex items-center justify-between border-t border-border bg-slate-50/40 px-4 py-2.5">
+                <p className="text-xs text-slate-400">
+                  Page {data.page} of {data.totalPages} · {data.total.toLocaleString()} patients
+                </p>
+                <div className="flex items-center gap-1">
+                  {data.page <= 1 ? (
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled>‹</Button>
+                  ) : (
+                    <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0">
+                      <Link href={paginationHref(data.page - 1, data.query)}>‹</Link>
+                    </Button>
+                  )}
+                  {data.page >= data.totalPages ? (
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled>›</Button>
+                  ) : (
+                    <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0">
+                      <Link href={paginationHref(data.page + 1, data.query)}>›</Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </>

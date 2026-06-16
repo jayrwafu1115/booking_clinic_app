@@ -24,6 +24,7 @@ function genId() {
 export function FormTemplateBuilder({ template }: { template?: FormTemplate }) {
   const [state, formAction] = useActionState(upsertFormTemplateAction, {});
   const [fields, setFields] = useState<FormField[]>(template?.fields ?? []);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   function addField() {
     setFields((prev) => [...prev, { id: genId(), type: "text", label: "", required: false }]);
@@ -40,6 +41,26 @@ export function FormTemplateBuilder({ template }: { template?: FormTemplate }) {
   function updateOptions(id: string, raw: string) {
     const options = raw.split("\n").map((s) => s.trim()).filter(Boolean);
     updateField(id, { options });
+  }
+
+  function handleDragStart(i: number) {
+    setDragIndex(i);
+  }
+
+  function handleDragOver(e: React.DragEvent, i: number) {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === i) return;
+    setFields((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(i, 0, moved);
+      return next;
+    });
+    setDragIndex(i);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
   }
 
   const needsOptions = (type: FormFieldType) => ["select", "radio", "checkbox"].includes(type);
@@ -82,9 +103,18 @@ export function FormTemplateBuilder({ template }: { template?: FormTemplate }) {
             <p className="text-sm text-slate-400">No fields yet. Add your first field above.</p>
           )}
           {fields.map((field, i) => (
-            <div key={field.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+            <div
+              key={field.id}
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDragEnd={handleDragEnd}
+              className={`rounded-2xl border p-4 space-y-3 transition-opacity ${
+                dragIndex === i ? "border-blue-300 bg-blue-50/40 opacity-50" : "border-slate-200"
+              }`}
+            >
               <div className="flex items-start gap-2">
-                <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-slate-300" />
+                <GripVertical className="mt-2.5 h-4 w-4 shrink-0 cursor-grab text-slate-300 active:cursor-grabbing" />
                 <div className="flex-1 grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-500">Label *</label>

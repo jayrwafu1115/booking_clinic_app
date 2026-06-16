@@ -34,7 +34,10 @@ export function LoginForm() {
 
       <form action={magicFormAction} className="space-y-3 border-t border-border pt-5">
         <AuthStatus message={magicState.message} success={magicState.success} />
-        <Input name="email" type="email" placeholder="Email for magic link" required />
+        <div className="space-y-2">
+          <Label htmlFor="magic-email">Email</Label>
+          <Input id="magic-email" name="email" type="email" autoComplete="email" placeholder="Your email address" required />
+        </div>
         <SubmitButton>Send magic link</SubmitButton>
       </form>
     </div>

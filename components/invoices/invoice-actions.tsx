@@ -21,6 +21,7 @@ const METHODS = ["cash", "gcash", "card", "bank_transfer", "philhealth", "hmo"] 
 
 export function InvoiceActions({ invoice, patientId, balance }: Props) {
   const [payOpen, setPayOpen] = useState(false);
+  const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
   const [payState, payAction] = useActionState(recordPaymentAction, {});
   const [statusState, statusAction] = useActionState(updateInvoiceStatusAction, {});
 
@@ -42,17 +43,44 @@ export function InvoiceActions({ invoice, patientId, balance }: Props) {
                 <Button type="submit" variant="outline" size="sm">Mark as sent</Button>
               </form>
             )}
-            <form action={statusAction}>
-              <input type="hidden" name="invoiceId" value={invoice.id} />
-              <input type="hidden" name="status" value="void" />
-              <Button type="submit" variant="outline" size="sm" className="text-red-600 hover:border-red-200 hover:bg-red-50">Void</Button>
-            </form>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:border-red-200 hover:bg-red-50"
+              onClick={() => setVoidConfirmOpen(true)}
+            >
+              Void
+            </Button>
           </>
         )}
         {statusState.message && (
           <p className={`self-center text-sm ${statusState.success ? "text-green-700" : "text-red-600"}`}>{statusState.message}</p>
         )}
       </div>
+
+      <Dialog open={voidConfirmOpen} onOpenChange={setVoidConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogTitle>Void this invoice?</DialogTitle>
+          <p className="text-sm text-slate-600">
+            Voiding is permanent and cannot be undone. The invoice will be marked as void and no further payments can be recorded.
+          </p>
+          <form
+            action={statusAction}
+            onSubmit={() => setVoidConfirmOpen(false)}
+            className="mt-4 flex gap-3"
+          >
+            <input type="hidden" name="invoiceId" value={invoice.id} />
+            <input type="hidden" name="status" value="void" />
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setVoidConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1 bg-red-600 text-white hover:bg-red-700">
+              Void invoice
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="max-w-sm">

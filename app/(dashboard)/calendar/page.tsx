@@ -25,7 +25,7 @@ export default async function CalendarPage({
     return (
       <div className="space-y-6">
         <ModuleHeader eyebrow="Scheduling" title="Calendar" description="FullCalendar day, week, month, and agenda views with drag-to-reschedule validation." />
-        <form className="grid gap-3 rounded-2xl border border-border bg-white p-4 shadow-soft md:grid-cols-4" method="get">
+        <form className="grid gap-3 rounded-2xl border border-border bg-white p-4 md:grid-cols-4" method="get">
           <select name="doctorId" defaultValue={data.filters.doctorId ?? ""} className="h-11 rounded-xl border border-input bg-white px-3 text-sm">
             <option value="">All doctors</option>
             {data.options?.doctors.map((doctor) => (

@@ -1,4 +1,5 @@
-import { FileText } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, FileText } from "lucide-react";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,14 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
     return (
       <div className="space-y-6">
+        <Link
+          href="/invoices"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to Invoices
+        </Link>
+
         <ModuleHeader
           eyebrow="Billing"
           title={invoice.invoice_number}

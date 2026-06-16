@@ -79,7 +79,7 @@ export function PatientConfirmActions({ token, status }: { token: string; status
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Schedule conflict, feeling better, etc."
             rows={2}
-            className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+            className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           />
           <div className="flex gap-2">
             <Button

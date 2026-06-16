@@ -45,7 +45,7 @@ export function AppointmentForm({
               name="patientId"
               defaultValue={appointment?.patient_id ?? ""}
               required
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
             >
               <option value="">Select patient</option>
               {patients.map((patient) => (
@@ -59,7 +59,7 @@ export function AppointmentForm({
             <select
               name="doctorId"
               defaultValue={appointment?.doctor_id ?? ""}
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
             >
               <option value="">No doctor assigned</option>
               {doctors.map((doctor) => (
@@ -75,7 +75,7 @@ export function AppointmentForm({
               value={serviceId}
               onChange={(event) => setServiceId(event.target.value)}
               required
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
             >
               <option value="">Select service</option>
               {services.map((service) => (
@@ -97,7 +97,7 @@ export function AppointmentForm({
             <select
               name="source"
               defaultValue={appointment?.source ?? "manual"}
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
             >
               {APPOINTMENT_SOURCES.map((source) => (
                 <option key={source} value={source}>
@@ -118,7 +118,7 @@ export function AppointmentForm({
                 name="notes"
                 defaultValue={appointment?.notes ?? ""}
                 rows={4}
-                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
               />
             </FormField>
           </div>

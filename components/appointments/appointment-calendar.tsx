@@ -50,7 +50,7 @@ function AppointmentModal({
     <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px]" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-border focus:outline-none">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 ring-1 ring-border focus:outline-none">
           <div className="flex items-center justify-between gap-3">
             <DialogPrimitive.Title className="text-base font-semibold text-slate-900">
               Appointment Details
@@ -102,7 +102,7 @@ function ErrorModal({ message, onClose }: { message: string; onClose: () => void
     <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px]" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-border focus:outline-none">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 ring-1 ring-border focus:outline-none">
           <div className="flex items-start gap-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
               <X className="h-5 w-5" />
@@ -177,7 +177,7 @@ export function AppointmentCalendar({ appointments, canManage }: { appointments:
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-4 shadow-soft">
+    <div className="rounded-2xl border border-border bg-white p-4">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView="timeGridWeek"

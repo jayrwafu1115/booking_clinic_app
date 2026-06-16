@@ -29,22 +29,22 @@ export function PatientForm({ patient }: { patient?: Patient }) {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FormField label="Full name">
-            <Input name="fullName" defaultValue={patient?.full_name ?? ""} required />
+            <Input name="fullName" autoComplete="name" defaultValue={patient?.full_name ?? ""} required />
           </FormField>
           <FormField label="Phone">
-            <Input name="phone" type="tel" defaultValue={patient?.phone ?? ""} required />
+            <Input name="phone" type="tel" autoComplete="tel" defaultValue={patient?.phone ?? ""} required />
           </FormField>
           <FormField label="Email">
-            <Input name="email" type="email" defaultValue={patient?.email ?? ""} />
+            <Input name="email" type="email" autoComplete="email" defaultValue={patient?.email ?? ""} />
           </FormField>
           <FormField label="Birth date">
-            <Input name="birthDate" type="date" defaultValue={patient?.birth_date ?? ""} />
+            <Input name="birthDate" type="date" autoComplete="bday" defaultValue={patient?.birth_date ?? ""} />
           </FormField>
           <FormField label="Gender">
             <select
               name="gender"
               defaultValue={patient?.gender ?? ""}
-              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-100"
+              className="h-11 w-full rounded-xl border border-input bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
             >
               <option value="">Not set</option>
               {genders.map((gender) => (
@@ -63,25 +63,25 @@ export function PatientForm({ patient }: { patient?: Patient }) {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FormField label="Address line 1">
-            <Input name="addressLine1" defaultValue={patient?.address_line_1 ?? ""} />
+            <Input name="addressLine1" autoComplete="address-line1" defaultValue={patient?.address_line_1 ?? ""} />
           </FormField>
           <FormField label="Address line 2">
-            <Input name="addressLine2" defaultValue={patient?.address_line_2 ?? ""} />
+            <Input name="addressLine2" autoComplete="address-line2" defaultValue={patient?.address_line_2 ?? ""} />
           </FormField>
           <FormField label="Barangay">
-            <Input name="barangay" defaultValue={patient?.barangay ?? ""} />
+            <Input name="barangay" autoComplete="address-level3" defaultValue={patient?.barangay ?? ""} />
           </FormField>
           <FormField label="City / Municipality">
-            <Input name="city" defaultValue={patient?.city ?? ""} />
+            <Input name="city" autoComplete="address-level2" defaultValue={patient?.city ?? ""} />
           </FormField>
           <FormField label="Province">
-            <Input name="province" defaultValue={patient?.province ?? ""} />
+            <Input name="province" autoComplete="address-level1" defaultValue={patient?.province ?? ""} />
           </FormField>
           <FormField label="Region">
-            <Input name="region" defaultValue={patient?.region ?? ""} />
+            <Input name="region" autoComplete="off" defaultValue={patient?.region ?? ""} />
           </FormField>
           <FormField label="Postal code">
-            <Input name="postalCode" defaultValue={patient?.postal_code ?? ""} />
+            <Input name="postalCode" autoComplete="postal-code" defaultValue={patient?.postal_code ?? ""} />
           </FormField>
         </CardContent>
       </Card>
@@ -103,7 +103,7 @@ export function PatientForm({ patient }: { patient?: Patient }) {
                 name="notes"
                 defaultValue={patient?.notes ?? ""}
                 rows={5}
-                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100"
               />
             </FormField>
           </div>

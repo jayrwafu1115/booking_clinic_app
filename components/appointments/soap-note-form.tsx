@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Lock } from "lucide-react";
 import { upsertClinicalNoteAction, lockClinicalNoteAction } from "@/server/actions/notes";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClinicalNote } from "@/types/database";
 
@@ -18,6 +19,7 @@ type Props = {
 export function SoapNoteForm({ appointmentId, patientId, doctorId, note, canManage }: Props) {
   const [upsertState, upsertAction] = useActionState(upsertClinicalNoteAction, {});
   const [lockState, lockAction] = useActionState(lockClinicalNoteAction, {});
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
 
   const locked = note?.is_locked ?? false;
   const readonly = !canManage || locked;
@@ -73,11 +75,16 @@ export function SoapNoteForm({ appointmentId, patientId, doctorId, note, canMana
       </form>
 
       {note && !locked && canManage && (
-        <form action={lockAction} className="border-t border-dashed border-slate-200 pt-4">
-          <input type="hidden" name="noteId" value={note.id} />
+        <div className="border-t border-dashed border-slate-200 pt-4">
           <div className="flex items-center gap-3">
-            <Button type="submit" variant="outline" size="sm" className="gap-2 text-amber-700 hover:border-amber-300 hover:bg-amber-50">
-              <Lock className="h-3.5 w-3.5" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 text-amber-700 hover:border-amber-300 hover:bg-amber-50"
+              onClick={() => setLockConfirmOpen(true)}
+            >
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               Lock note
             </Button>
             <p className="text-xs text-slate-400">Locked notes cannot be edited.</p>
@@ -87,7 +94,29 @@ export function SoapNoteForm({ appointmentId, patientId, doctorId, note, canMana
               </p>
             )}
           </div>
-        </form>
+
+          <Dialog open={lockConfirmOpen} onOpenChange={setLockConfirmOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogTitle>Lock this note?</DialogTitle>
+              <p className="text-sm text-slate-600">
+                Locking is permanent — this note can no longer be edited after confirmation.
+              </p>
+              <form
+                action={lockAction}
+                onSubmit={() => setLockConfirmOpen(false)}
+                className="mt-4 flex gap-3"
+              >
+                <input type="hidden" name="noteId" value={note.id} />
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setLockConfirmOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1 bg-amber-600 text-white hover:bg-amber-700">
+                  Lock note
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       )}
     </div>
   );

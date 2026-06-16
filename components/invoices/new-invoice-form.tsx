@@ -109,11 +109,12 @@ export function NewInvoiceForm({ patients }: { patients: Pick<Patient, "id" | "f
                   type="button"
                   variant="ghost"
                   size="sm"
+                  aria-label="Remove item"
                   onClick={() => removeItem(i)}
                   disabled={items.length === 1}
                   className="h-10 w-9 p-0 text-slate-400 hover:text-red-500"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>

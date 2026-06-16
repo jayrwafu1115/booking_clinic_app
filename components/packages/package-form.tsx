@@ -45,8 +45,8 @@ export function PackageForm({ mode, pkg }: Props) {
 
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        <Pencil className="h-3.5 w-3.5" />
+      <Button variant="ghost" size="sm" aria-label="Edit package" onClick={() => setOpen(true)}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">

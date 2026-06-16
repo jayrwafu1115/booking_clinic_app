@@ -12,7 +12,13 @@ const INVOICE_WITH_RELATIONS = `
   payments(*)
 ` as const;
 
-export async function getInvoicesData(searchParams?: { q?: string; status?: string; page?: string }) {
+export async function getInvoicesData(searchParams?: {
+  q?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: string;
+}) {
   const profile = await getCurrentProfile();
   if (!profile?.clinic_id) return null;
   if (!profileHasPermission(profile, "invoices:view")) return null;
@@ -28,8 +34,10 @@ export async function getInvoicesData(searchParams?: { q?: string; status?: stri
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-  if (searchParams?.status) query = query.eq("status", searchParams.status);
-  if (searchParams?.q) query = query.ilike("invoice_number", `%${searchParams.q}%`);
+  if (searchParams?.status)   query = query.eq("status", searchParams.status);
+  if (searchParams?.q)        query = query.ilike("invoice_number", `%${searchParams.q}%`);
+  if (searchParams?.dateFrom) query = query.gte("created_at", `${searchParams.dateFrom}T00:00:00`);
+  if (searchParams?.dateTo)   query = query.lte("created_at", `${searchParams.dateTo}T23:59:59`);
 
   const { data, count, error } = await query;
   if (error) throw new Error(error.message);
@@ -40,6 +48,12 @@ export async function getInvoicesData(searchParams?: { q?: string; status?: stri
     page,
     totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)),
     canManage: profileHasPermission(profile, "invoices:manage"),
+    filters: {
+      q: searchParams?.q ?? "",
+      status: searchParams?.status ?? "",
+      dateFrom: searchParams?.dateFrom ?? "",
+      dateTo: searchParams?.dateTo ?? "",
+    },
   };
 }
 
