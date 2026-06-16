@@ -1,0 +1,38 @@
+
+> clinicflow-ai-ph@0.1.0 build
+> next build
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+   ▲ Next.js 15.5.19
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (243kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+Failed to compile.
+
+./app/(dashboard)/doctors/page.tsx
+Module not found: Can't resolve '@/components/doctors/doctors-table'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./app/(dashboard)/services/page.tsx
+Module not found: Can't resolve '@/components/services/services-table'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./app/admin/clinics/page.tsx
+Module not found: Can't resolve '@/components/admin/clinics-table'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./app/admin/users/page.tsx
+Module not found: Can't resolve '@/components/admin/users-table'
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+> Build failed because of webpack errors
