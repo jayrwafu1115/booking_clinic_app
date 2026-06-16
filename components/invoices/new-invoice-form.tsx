@@ -9,7 +9,13 @@ import type { Patient } from "@/types/database";
 
 type LineItem = { description: string; quantity: number; unitPricePesos: number };
 
-export function NewInvoiceForm({ patients }: { patients: Pick<Patient, "id" | "full_name" | "phone">[] }) {
+export function NewInvoiceForm({
+  patients,
+  defaultPatientId,
+}: {
+  patients: Pick<Patient, "id" | "full_name" | "phone">[];
+  defaultPatientId?: string;
+}) {
   const [state, formAction] = useActionState(createInvoiceAction, {});
   const [items, setItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPricePesos: 0 }]);
 
@@ -34,7 +40,7 @@ export function NewInvoiceForm({ patients }: { patients: Pick<Patient, "id" | "f
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700">Patient *</label>
-            <select name="patientId" required className="h-10 w-full rounded-xl border border-input px-3 text-sm">
+            <select name="patientId" required defaultValue={defaultPatientId ?? ""} className="h-10 w-full rounded-xl border border-input px-3 text-sm">
               <option value="">— Select patient —</option>
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>{p.full_name} · {p.phone}</option>

@@ -9,7 +9,12 @@ import type { Patient } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewInvoicePage() {
+export default async function NewInvoicePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ patientId?: string }>;
+}) {
+  const { patientId } = (await searchParams) ?? {};
   const profile = await getCurrentProfile();
   if (!profile?.clinic_id) return <AccessCard title="New Invoice" message="Sign in to create invoices." />;
   if (!profileHasPermission(profile, "invoices:manage")) return <AccessCard title="New Invoice" message="You do not have permission to create invoices." />;
@@ -25,7 +30,7 @@ export default async function NewInvoicePage() {
   return (
     <div className="space-y-6">
       <ModuleHeader eyebrow="Billing" title="New Invoice" description="Create a new invoice for a patient." icon={FileText} />
-      <NewInvoiceForm patients={patients ?? []} />
+      <NewInvoiceForm patients={patients ?? []} defaultPatientId={patientId} />
     </div>
   );
 }
