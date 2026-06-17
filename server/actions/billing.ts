@@ -38,9 +38,9 @@ export async function initiatePlanUpgradeAction(
       return { message: "Plan not found." };
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const successUrl = process.env.PAYMONGO_SUCCESS_REDIRECT_URL ?? `${appUrl}/billing/success`;
-    const cancelUrl = process.env.PAYMONGO_CANCEL_REDIRECT_URL ?? `${appUrl}/billing/cancelled`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    const successUrl = (process.env.PAYMONGO_SUCCESS_REDIRECT_URL ?? `${appUrl}/billing/success`).replace(/\/$/, "");
+    const cancelUrl = (process.env.PAYMONGO_CANCEL_REDIRECT_URL ?? `${appUrl}/billing/cancelled`).replace(/\/$/, "");
 
     const session = await createCheckoutSession({
       lineItems: [

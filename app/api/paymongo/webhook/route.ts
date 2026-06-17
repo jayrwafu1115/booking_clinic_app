@@ -4,6 +4,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
+export function GET() {
+  return NextResponse.json({ status: "ok", endpoint: "paymongo-webhook" });
+}
+
 type PayMongoSignatureParts = {
   timestamp: string;
   testSignature: string | null;
