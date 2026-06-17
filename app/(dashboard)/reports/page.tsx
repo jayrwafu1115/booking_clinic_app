@@ -122,9 +122,9 @@ export default async function ReportsPage({
       <section>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            label="Revenue (Completed)"
+            label="Revenue"
             value={formatPHP(appt.revenueCentavos)}
-            detail="From completed appointments"
+            detail="From paid invoices"
             icon={Wallet}
           />
           <StatCard
