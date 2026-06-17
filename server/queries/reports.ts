@@ -104,6 +104,7 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
     statsResult,
     newPatientsResult,
     totalPatientsResult,
+    paidRevenueResult,
     conversationsResult,
     msgCountResult,
     msgMetaResult
@@ -126,6 +127,17 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
       .from("patients")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId),
+
+    // Revenue from paid invoices (cash-basis) — overrides the RPC's
+    // appointment-based revenue so no DB migration is required.
+    supabase
+      .from("invoices")
+      .select("total_centavos")
+      .eq("clinic_id", clinicId)
+      .eq("status", "paid")
+      .gte("created_at", dateRange.start)
+      .lt("created_at", dateRange.end)
+      .returns<{ total_centavos: number }[]>(),
 
     supabase
       .from("ai_conversations")
@@ -157,6 +169,11 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
 
   const stats = statsResult.data as AppointmentStats | null;
   if (!stats) return null;
+
+  const paidRevenueCentavos = (paidRevenueResult.data ?? []).reduce(
+    (sum, row) => sum + (row.total_centavos ?? 0),
+    0
+  );
 
   // ── Conversation stats ──────────────────────────────────────────────────────
   const conversations = conversationsResult.data ?? [];
@@ -224,7 +241,7 @@ export async function getClinicReports(dateRange: ResolvedDateRange): Promise<Cl
       cancelled: stats.cancelled,
       noShow: stats.no_show,
       booked: stats.booked,
-      revenueCentavos: stats.revenue_centavos,
+      revenueCentavos: paidRevenueCentavos,
       aiSourced: stats.ai_sourced,
       widgetSourced: stats.widget_sourced,
       manualSourced: stats.manual_sourced,
