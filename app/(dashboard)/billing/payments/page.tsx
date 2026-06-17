@@ -24,14 +24,6 @@ function formatDateTime(iso: string) {
   }).format(new Date(iso));
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  manual: "Manual",
-  widget: "Widget",
-  ai: "AI",
-  phone: "Phone",
-  walk_in: "Walk-in"
-};
-
 function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub?: string }) {
   return (
     <Card>
@@ -50,24 +42,19 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ElementType; 
 }
 
 function PaymentTableRow({ row }: { row: PaymentRow }) {
-  const source = SOURCE_LABELS[row.source] ?? row.source;
   return (
     <tr className="border-b border-border last:border-0 hover:bg-slate-50/60">
       <td className="py-3 pr-4">
         <p className="text-sm font-medium text-slate-800">{row.patient_name ?? "—"}</p>
-        <p className="text-xs text-slate-400">{formatDateTime(row.start_at)}</p>
+        <p className="text-xs text-slate-400">{formatDateTime(row.created_at)}</p>
       </td>
       <td className="py-3 pr-4">
-        <p className="text-sm text-slate-700">{row.service_name ?? "—"}</p>
-        {row.doctor_name && <p className="text-xs text-slate-400">{row.doctor_name}</p>}
-      </td>
-      <td className="py-3 pr-4">
-        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-          {source}
-        </span>
+        <Link href={`/invoices/${row.id}`} className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700">
+          {row.invoice_number}
+        </Link>
       </td>
       <td className="py-3 text-right">
-        <span className="text-sm font-semibold text-green-700">{php(row.price_centavos)}</span>
+        <span className="text-sm font-semibold text-green-700">{php(row.total_centavos)}</span>
       </td>
     </tr>
   );
@@ -87,7 +74,7 @@ export default async function PaymentsPage() {
       <ModuleHeader
         eyebrow="Billing"
         title="Payments"
-        description="Revenue from completed appointments. Mark an appointment as Completed to record a payment."
+        description="Revenue from paid invoices."
         icon={CreditCard}
       />
 
@@ -96,35 +83,35 @@ export default async function PaymentsPage() {
           icon={Wallet}
           label="All-time revenue"
           value={php(data.totalCentavos)}
-          sub={`${data.totalCount} completed appointment${data.totalCount !== 1 ? "s" : ""}`}
+          sub={`${data.totalCount} paid invoice${data.totalCount !== 1 ? "s" : ""}`}
         />
         <StatCard
           icon={TrendingUp}
           label="This month"
           value={php(data.thisMonthCentavos)}
-          sub="Completed appointments in current month"
+          sub="Paid invoices in current month"
         />
         <StatCard
           icon={ArrowUpRight}
-          label="Average per visit"
+          label="Average per invoice"
           value={avgCentavos > 0 ? php(avgCentavos) : "—"}
-          sub="Based on completed appointments"
+          sub="Based on paid invoices"
         />
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Transaction History</CardTitle>
-          <Link href="/appointments" className="text-xs font-medium text-blue-600 hover:text-blue-700">
-            View appointments →
+          <Link href="/invoices" className="text-xs font-medium text-blue-600 hover:text-blue-700">
+            View all invoices →
           </Link>
         </CardHeader>
         <CardContent>
           {data.rows.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-sm font-medium text-slate-600">No payments recorded yet.</p>
+              <p className="text-sm font-medium text-slate-600">No paid invoices yet.</p>
               <p className="mt-1 text-xs text-slate-400">
-                Mark appointments as <span className="font-semibold">Completed</span> to see revenue here.
+                Mark an invoice as <span className="font-semibold">Paid</span> to record revenue here.
               </p>
             </div>
           ) : (
@@ -133,8 +120,7 @@ export default async function PaymentsPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Patient / Date</th>
-                    <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Service</th>
-                    <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Source</th>
+                    <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Invoice</th>
                     <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">Amount</th>
                   </tr>
                 </thead>
@@ -146,7 +132,7 @@ export default async function PaymentsPage() {
               </table>
               {data.totalCount >= 200 && (
                 <p className="mt-4 text-center text-xs text-slate-400">
-                  Showing the 200 most recent payments. Full export coming soon.
+                  Showing the 200 most recent paid invoices.
                 </p>
               )}
             </div>
@@ -154,9 +140,6 @@ export default async function PaymentsPage() {
         </CardContent>
       </Card>
 
-      <p className="text-center text-xs text-slate-400">
-        PayMongo payment links and invoice generation coming soon.
-      </p>
     </div>
   );
 }

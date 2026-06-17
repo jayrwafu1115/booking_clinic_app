@@ -6,13 +6,10 @@ import type { ClinicSubscription, SubscriptionPlan, Clinic } from "@/types/datab
 
 export type PaymentRow = {
   id: string;
-  start_at: string;
-  status: string;
+  invoice_number: string;
+  created_at: string;
   patient_name: string | null;
-  service_name: string | null;
-  doctor_name: string | null;
-  price_centavos: number;
-  source: string;
+  total_centavos: number;
 };
 
 export type PaymentsData = {
@@ -128,20 +125,18 @@ export async function getPaymentsData(): Promise<PaymentsData | null> {
 
   type Row = {
     id: string;
-    start_at: string;
-    status: string;
-    source: string;
+    invoice_number: string;
+    created_at: string;
+    total_centavos: number;
     patients: { full_name: string } | null;
-    services: { name: string; price_centavos: number } | null;
-    doctors: { full_name: string } | null;
   };
 
   const { data, error } = await supabase
-    .from("appointments")
-    .select("id, start_at, status, source, patients(full_name), services(name, price_centavos), doctors(full_name)")
+    .from("invoices")
+    .select("id, invoice_number, created_at, total_centavos, patients(full_name)")
     .eq("clinic_id", profile.clinic_id)
-    .eq("status", "completed")
-    .order("start_at", { ascending: false })
+    .eq("status", "paid")
+    .order("created_at", { ascending: false })
     .limit(200)
     .returns<Row[]>();
 
@@ -149,22 +144,19 @@ export async function getPaymentsData(): Promise<PaymentsData | null> {
 
   const rows = (data ?? []).map((r) => ({
     id: r.id,
-    start_at: r.start_at,
-    status: r.status,
-    source: r.source,
+    invoice_number: r.invoice_number,
+    created_at: r.created_at,
     patient_name: r.patients?.full_name ?? null,
-    service_name: r.services?.name ?? null,
-    doctor_name: r.doctors?.full_name ?? null,
-    price_centavos: r.services?.price_centavos ?? 0
+    total_centavos: r.total_centavos,
   }));
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const totalCentavos = rows.reduce((s, r) => s + r.price_centavos, 0);
+  const totalCentavos = rows.reduce((s, r) => s + r.total_centavos, 0);
   const thisMonthCentavos = rows
-    .filter((r) => r.start_at >= monthStart)
-    .reduce((s, r) => s + r.price_centavos, 0);
+    .filter((r) => r.created_at >= monthStart)
+    .reduce((s, r) => s + r.total_centavos, 0);
 
   return { rows, totalCentavos, thisMonthCentavos, totalCount: rows.length };
 }

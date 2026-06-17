@@ -41,7 +41,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics | null> {
     upcomingCountResult,
     patientCountResult,
     monthAppointmentsResult,
-    completedRevenueResult,
+    paidInvoicesResult,
     todayAppointmentsResult
   ] = await Promise.all([
     supabase
@@ -66,13 +66,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics | null> {
       .lt("start_at", month.end)
       .returns<{ status: string }[]>(),
     supabase
-      .from("appointments")
-      .select("services(price_centavos)")
+      .from("invoices")
+      .select("total_centavos")
       .eq("clinic_id", profile.clinic_id)
-      .eq("status", "completed")
-      .gte("start_at", month.start)
-      .lt("start_at", month.end)
-      .returns<{ services: { price_centavos: number } | null }[]>(),
+      .eq("status", "paid")
+      .gte("created_at", month.start)
+      .lt("created_at", month.end)
+      .returns<{ total_centavos: number }[]>(),
     supabase
       .from("appointments")
       .select(baseAppointmentSelect())
@@ -89,7 +89,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics | null> {
     upcomingCountResult.error ??
     patientCountResult.error ??
     monthAppointmentsResult.error ??
-    completedRevenueResult.error ??
+    paidInvoicesResult.error ??
     todayAppointmentsResult.error;
 
   if (firstError) {
@@ -100,8 +100,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics | null> {
   const denominator = monthAppointments.length || 1;
   const noShows = monthAppointments.filter((appointment) => appointment.status === "no_show").length;
   const cancellations = monthAppointments.filter((appointment) => appointment.status === "cancelled").length;
-  const revenueThisMonthCentavos = (completedRevenueResult.data ?? []).reduce(
-    (sum, row) => sum + (row.services?.price_centavos ?? 0),
+  const revenueThisMonthCentavos = (paidInvoicesResult.data ?? []).reduce(
+    (sum, row) => sum + row.total_centavos,
     0
   );
 
