@@ -24,7 +24,7 @@ export function DashboardOverview({ metrics = emptyMetrics }: { metrics?: Dashbo
     {
       label: "Revenue This Month",
       value: formatPesoFromCentavos(resolvedMetrics.revenueThisMonthCentavos),
-      detail: "Completed appointment services",
+      detail: "From paid invoices",
       icon: CircleDollarSign
     },
     { label: "No Show Rate", value: `${resolvedMetrics.noShowRate}%`, detail: "This Manila month", icon: UserX },

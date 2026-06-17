@@ -20,13 +20,13 @@ export function PublicWebsiteCard({ clinicSlug, enabled }: PublicWebsiteCardProp
             <h3 className="text-base font-semibold text-slate-900">Public Clinic Website</h3>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               Get a professional, mobile-friendly website for your clinic — services, doctors, clinic hours, and the
-              AI booking assistant, all in one shareable page. Available on the <strong>Enterprise</strong> plan.
+              AI booking assistant, all in one shareable page. Available on the <strong>Pro</strong> plan.
             </p>
             <Link
               href="/billing"
               className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
             >
-              Upgrade to Enterprise
+              Upgrade to Pro
             </Link>
           </div>
         </div>
