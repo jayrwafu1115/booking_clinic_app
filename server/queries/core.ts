@@ -28,6 +28,12 @@ export type AccessContext = {
   clinicId: string;
 };
 
+export type PatientStatusCounts = {
+  active: number;
+  critical: number;
+  inactive: number;
+};
+
 export type PaginatedPatients = {
   profile: Profile;
   patients: Patient[];
@@ -36,6 +42,7 @@ export type PaginatedPatients = {
   pageSize: number;
   total: number;
   totalPages: number;
+  statusCounts: PatientStatusCounts;
   canManage: boolean;
 };
 
@@ -78,7 +85,17 @@ export async function getPatientsData(searchParams?: { q?: string; page?: string
     request = request.or(`full_name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`);
   }
 
-  const { data, error, count } = await request.returns<Patient[]>();
+  const [
+    { data, error, count },
+    { count: activeCount },
+    { count: criticalCount },
+    { count: inactiveCount }
+  ] = await Promise.all([
+    request.returns<Patient[]>(),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("clinic_id", context.clinicId).eq("status", "active"),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("clinic_id", context.clinicId).eq("status", "critical"),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("clinic_id", context.clinicId).eq("status", "inactive")
+  ]);
 
   if (error) {
     throw new Error(error.message);
@@ -92,6 +109,11 @@ export async function getPatientsData(searchParams?: { q?: string; page?: string
     pageSize,
     total: count ?? 0,
     totalPages: Math.max(Math.ceil((count ?? 0) / pageSize), 1),
+    statusCounts: {
+      active: activeCount ?? 0,
+      critical: criticalCount ?? 0,
+      inactive: inactiveCount ?? 0
+    },
     canManage: profileHasPermission(context.profile, "patients:manage")
   };
 }
