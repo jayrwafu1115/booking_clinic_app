@@ -10,6 +10,10 @@ import { registerAction } from "@/server/actions/auth";
 export function RegisterForm() {
   const [state, formAction] = useActionState(registerAction, {});
 
+  if (state.success) {
+    return <AuthStatus message={state.message} success />;
+  }
+
   return (
     <form action={formAction} className="space-y-4">
       <AuthStatus message={state.message} success={state.success} />

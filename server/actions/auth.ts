@@ -6,6 +6,7 @@ import { DEFAULT_COUNTRY, DEFAULT_TIMEZONE } from "@/lib/constants/app";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { slugifyClinicName } from "@/lib/tenant/slug";
+import { sendResendEmail } from "@/lib/notifications/resend";
 import { acceptInviteSchema, forgotPasswordSchema, loginSchema, magicLinkSchema, registerSchema } from "@/lib/validations/auth";
 
 type AuthState = {
@@ -61,22 +62,28 @@ export async function registerAction(_: AuthState, formData: FormData): Promise<
     return { message: clinicError?.message ?? "Could not create clinic." };
   }
 
-  const { data: createdUser, error: userError } = await admin.auth.admin.createUser({
+  // Create the user and obtain a one-time confirmation link in a single call.
+  // Using generateLink instead of createUser so we control the email ourselves
+  // via Resend and the user must verify before logging in.
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "signup",
     email,
     password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: fullName,
-      clinic_id: clinic.id
+    options: {
+      redirectTo: `${appUrl()}/dashboard`,
+      data: {
+        full_name: fullName,
+        clinic_id: clinic.id
+      }
     }
   });
 
-  if (userError || !createdUser.user) {
-    return { message: userError?.message ?? "Could not create account." };
+  if (linkError || !linkData.user) {
+    return { message: linkError?.message ?? "Could not create account." };
   }
 
   const { error: profileError } = await admin.from("profiles").insert({
-    id: createdUser.user.id,
+    id: linkData.user.id,
     clinic_id: clinic.id,
     role: "clinic_owner",
     full_name: fullName,
@@ -94,11 +101,29 @@ export async function registerAction(_: AuthState, formData: FormData): Promise<
     default_currency: "PHP"
   });
 
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signInWithPassword({ email, password });
+  const confirmLink = linkData.properties?.action_link;
+  if (confirmLink) {
+    await sendResendEmail({
+      to: email,
+      subject: "Confirm your Book Clinic PH account",
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1e293b;">
+          <h2 style="margin-bottom:8px;">Welcome to Book Clinic PH, ${fullName}!</h2>
+          <p style="color:#475569;">Your clinic workspace <strong>${clinicName}</strong> is ready. Click the button below to confirm your email and activate your account.</p>
+          <a href="${confirmLink}"
+             style="display:inline-block;margin:24px 0;padding:12px 28px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Confirm my account
+          </a>
+          <p style="font-size:13px;color:#94a3b8;">This link expires in 24 hours. If you did not sign up for Book Clinic PH, you can safely ignore this email.</p>
+        </div>
+      `
+    });
+  }
 
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
+  return {
+    success: true,
+    message: `We've sent a confirmation link to ${email}. Check your inbox to activate your account.`
+  };
 }
 
 export async function magicLinkAction(_: AuthState, formData: FormData): Promise<AuthState> {
