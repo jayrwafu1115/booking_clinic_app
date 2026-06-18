@@ -101,7 +101,6 @@ export type UserInvite = {
 };
 
 export type PatientGender = "male" | "female" | "other" | "prefer_not_to_say";
-export type PatientStatus = "active" | "critical" | "inactive";
 
 export type Patient = {
   id: string;
@@ -111,7 +110,6 @@ export type Patient = {
   phone: string;
   birth_date: string | null;
   gender: PatientGender | null;
-  status: PatientStatus;
   address_line_1: string | null;
   address_line_2: string | null;
   barangay: string | null;
