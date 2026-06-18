@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronRight, Search, Stethoscope } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { Doctor } from "@/types/database";
 
-type DoctorRow = Pick<Doctor, "id" | "full_name" | "specialization" | "email" | "phone" | "active">;
-
-export function DoctorsTable({ doctors }: { doctors: DoctorRow[] }) {
-  const router = useRouter();
+export function DoctorsTable({
+  doctors,
+  canManage,
+  onRowClick
+}: {
+  doctors: Doctor[];
+  canManage?: boolean;
+  onRowClick?: (doctor: Doctor) => void;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = doctors.filter(
@@ -18,6 +22,8 @@ export function DoctorsTable({ doctors }: { doctors: DoctorRow[] }) {
       (d.specialization ?? "").toLowerCase().includes(query.toLowerCase()) ||
       (d.email ?? "").toLowerCase().includes(query.toLowerCase())
   );
+
+  const isClickable = canManage && !!onRowClick;
 
   return (
     <>
@@ -55,8 +61,10 @@ export function DoctorsTable({ doctors }: { doctors: DoctorRow[] }) {
               filtered.map((doctor) => (
                 <tr
                   key={doctor.id}
-                  className="group cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-slate-50"
-                  onClick={() => router.push(`/doctors/${doctor.id}`)}
+                  className={`group border-b border-border last:border-0 transition-colors hover:bg-slate-50 ${
+                    isClickable ? "cursor-pointer" : ""
+                  }`}
+                  onClick={isClickable ? () => onRowClick(doctor) : undefined}
                 >
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
@@ -73,10 +81,13 @@ export function DoctorsTable({ doctors }: { doctors: DoctorRow[] }) {
                     {doctor.email ?? doctor.phone ?? <span className="text-slate-300">—</span>}
                   </td>
                   <td className="px-4 py-3.5">
-                    <span className={doctor.active
-                      ? "inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
-                      : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500"
-                    }>
+                    <span
+                      className={
+                        doctor.active
+                          ? "inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
+                          : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500"
+                      }
+                    >
                       {doctor.active ? "Active" : "Inactive"}
                     </span>
                   </td>

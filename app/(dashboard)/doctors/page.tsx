@@ -1,8 +1,5 @@
-import { Plus, Stethoscope } from "lucide-react";
-import { DoctorsTable } from "@/components/doctors/doctors-table";
-import { EmptyState } from "@/components/core/empty-state";
-import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
+import { DoctorsClient } from "@/components/doctors/doctors-client";
 import { getDoctorsData } from "@/server/queries/core";
 
 export const dynamic = "force-dynamic";
@@ -16,20 +13,11 @@ export default async function DoctorsPage() {
     }
 
     return (
-      <div className="space-y-6">
-        <ModuleHeader
-          eyebrow="Clinic Management"
-          title="Doctors"
-          description="Manage provider profiles, specialties, license details, and appointment availability links."
-          action={data.canManage ? { href: "/doctors/new", label: "New doctor", icon: Plus } : undefined}
-          icon={Stethoscope}
-        />
-        {data.doctors.length === 0 ? (
-          <EmptyState icon={Stethoscope} title="No doctors yet" description="Add clinic providers so schedules and appointments can be assigned." />
-        ) : (
-          <DoctorsTable doctors={data.doctors} />
-        )}
-      </div>
+      <DoctorsClient
+        doctors={data.doctors}
+        doctorProfiles={data.doctorProfiles}
+        canManage={data.canManage}
+      />
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load doctors.";
