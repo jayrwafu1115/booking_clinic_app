@@ -13,6 +13,7 @@ export const patientSchema = z.object({
   phone: z.string().trim().min(5).max(40),
   birthDate: optionalDate,
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().or(z.literal("")).transform((value) => value || null),
+  status: z.enum(["active", "inactive"]).default("active"),
   addressLine1: optionalText,
   addressLine2: optionalText,
   barangay: optionalText,
