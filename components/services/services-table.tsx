@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatPesoFromCentavos } from "@/lib/utils/format";
 import type { Service } from "@/types/database";
 
-type ServiceRow = Pick<Service, "id" | "name" | "category" | "duration_minutes" | "price_centavos" | "color" | "active">;
-
-export function ServicesTable({ services }: { services: ServiceRow[] }) {
-  const router = useRouter();
+export function ServicesTable({
+  services,
+  canManage,
+  onRowClick
+}: {
+  services: Service[];
+  canManage?: boolean;
+  onRowClick?: (service: Service) => void;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = services.filter(
@@ -18,6 +22,8 @@ export function ServicesTable({ services }: { services: ServiceRow[] }) {
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       (s.category ?? "").toLowerCase().includes(query.toLowerCase())
   );
+
+  const isClickable = canManage && !!onRowClick;
 
   return (
     <>
@@ -57,8 +63,10 @@ export function ServicesTable({ services }: { services: ServiceRow[] }) {
                 filtered.map((service) => (
                   <tr
                     key={service.id}
-                    className="group cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-slate-50"
-                    onClick={() => router.push(`/services/${service.id}`)}
+                    className={`group border-b border-border last:border-0 transition-colors hover:bg-slate-50 ${
+                      isClickable ? "cursor-pointer" : ""
+                    }`}
+                    onClick={isClickable ? () => onRowClick(service) : undefined}
                   >
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
@@ -79,10 +87,13 @@ export function ServicesTable({ services }: { services: ServiceRow[] }) {
                       {formatPesoFromCentavos(service.price_centavos)}
                     </td>
                     <td className="hidden px-4 py-3.5 lg:table-cell">
-                      <span className={service.active
-                        ? "inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
-                        : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500"
-                      }>
+                      <span
+                        className={
+                          service.active
+                            ? "inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
+                            : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500"
+                        }
+                      >
                         {service.active ? "Active" : "Inactive"}
                       </span>
                     </td>
