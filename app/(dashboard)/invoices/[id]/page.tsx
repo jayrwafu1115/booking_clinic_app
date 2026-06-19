@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +57,14 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               balance={balance}
             />
           )}
+          <Link
+            href={`/invoices/${invoice.id}/print`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print
+          </Link>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

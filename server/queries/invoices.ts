@@ -3,7 +3,7 @@
 import { getCurrentProfile } from "@/lib/auth/session";
 import { profileHasPermission } from "@/lib/auth/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Invoice, InvoiceWithRelations, Patient } from "@/types/database";
+import type { InvoiceWithRelations } from "@/types/database";
 
 const INVOICE_WITH_RELATIONS = `
   *,
@@ -29,7 +29,7 @@ export async function getInvoicesData(searchParams?: {
 
   let query = supabase
     .from("invoices")
-    .select("*, patients(id, full_name)", { count: "exact" })
+    .select(`${INVOICE_WITH_RELATIONS}`, { count: "exact" })
     .eq("clinic_id", profile.clinic_id)
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
@@ -43,7 +43,7 @@ export async function getInvoicesData(searchParams?: {
   if (error) throw new Error(error.message);
 
   return {
-    invoices: (data ?? []) as (Invoice & { patients: Pick<Patient, "id" | "full_name"> | null })[],
+    invoices: (data ?? []) as InvoiceWithRelations[],
     total: count ?? 0,
     page,
     totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)),

@@ -18,7 +18,7 @@ const itemSchema = z.object({
 });
 
 const createInvoiceSchema = z.object({
-  patientId: z.string().uuid(),
+  patientId: z.string().uuid("Please select a patient."),
   appointmentId: z.string().uuid().optional().or(z.literal("")).transform((v) => v || null),
   notes: z.string().trim().optional().transform((v) => v || null),
   dueDate: z.string().optional().transform((v) => v || null),

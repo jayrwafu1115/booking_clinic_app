@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  Bell, Bot, CalendarDays, Check, ClipboardCheck, ClipboardList, CreditCard,
-  DoorOpen, LayoutDashboard, LineChart, LogOut, Package, Receipt, RefreshCw,
-  Search, Settings, ShieldCheck, Sparkles, Stethoscope, Ticket, UserCog,
-  Users, Wallet, X, XCircle
+  Bell, Bot, CalendarDays, Check, ChevronDown, ClipboardCheck, ClipboardList,
+  CreditCard, DoorOpen, ExternalLink, FileText, Globe, LayoutDashboard, LineChart, LogOut,
+  Package, Receipt, RefreshCw, Search, Settings, ShieldCheck, Sparkles,
+  Stethoscope, Ticket, UserCog, Users, Wallet, XCircle
 } from "lucide-react";
 import { logoutAction } from "@/server/actions/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,12 +26,6 @@ type NavItem = {
   requiresAi?: boolean;
 };
 
-type NavSection = {
-  label: string;
-  items: NavItem[];
-  requiresAi?: boolean;
-};
-
 type SearchableItem = {
   href: string;
   label: string;
@@ -39,59 +33,54 @@ type SearchableItem = {
   section: string;
 };
 
-const sections: NavSection[] = [
-  {
-    label: "Main",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/appointments", label: "Appointments", icon: ClipboardList, permissions: ["appointments:view_all", "appointments:manage"] },
-      { href: "/calendar", label: "Calendar", icon: CalendarDays, permissions: ["appointments:view_all", "appointments:view_assigned"] },
-      { href: "/appointments/waitlist", label: "Waitlist", icon: ClipboardList, permissions: ["appointments:manage"] },
-      { href: "/appointments/recurring", label: "Recurring", icon: RefreshCw, permissions: ["appointments:manage"] },
-      { href: "/queue", label: "Queue", icon: Ticket, permissions: ["queue:view"] },
-      { href: "/patients", label: "Patients", icon: Users, permissions: ["patients:view"] },
-      { href: "/services", label: "Services", icon: Stethoscope, permissions: ["services:view"] },
-      { href: "/doctors", label: "Doctors", icon: UserCog, permissions: ["doctors:view"] },
-      { href: "/availability", label: "Availability", icon: CalendarDays, permissions: ["availability:view"] },
-    ],
-  },
-  {
-    label: "Clinical",
-    items: [
-      { href: "/forms", label: "Intake Forms", icon: ClipboardCheck, permissions: ["forms:view"] },
-    ],
-  },
-  {
-    label: "AI Assistant",
-    requiresAi: true,
-    items: [
-      { href: "/ai/conversations", label: "AI Conversations", icon: Bot, permissions: ["ai:view"], requiresAi: true },
-      { href: "/ai/settings", label: "AI Settings", icon: Settings, permissions: ["ai:manage"], requiresAi: true },
-      { href: "/ai/faq", label: "FAQ Knowledge Base", icon: Sparkles, permissions: ["ai:manage"], requiresAi: true },
-      { href: "/ai/widget", label: "Widget & Embed", icon: Bot, permissions: ["ai:manage"], requiresAi: true },
-    ],
-  },
-  {
-    label: "Business",
-    items: [
-      { href: "/invoices", label: "Invoices", icon: Receipt, permissions: ["invoices:view"] },
-      { href: "/packages", label: "Packages", icon: Package, permissions: ["packages:view"] },
-      { href: "/billing", label: "Billing & Plans", icon: CreditCard, permissions: ["billing:view"] },
-      { href: "/billing/payments", label: "Payments", icon: Wallet, permissions: ["billing:view"] },
-      { href: "/reports", label: "Reports", icon: LineChart, permissions: ["billing:view"] },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/settings/clinic", label: "Clinic Settings", icon: Settings, permissions: ["clinic_settings:update"] },
-      { href: "/settings/users", label: "Users & Roles", icon: Users, permissions: ["team:view"] },
-      { href: "/settings/notifications", label: "Notifications", icon: Sparkles, permissions: ["clinic_settings:update"] },
-      { href: "/settings/rooms", label: "Rooms", icon: DoorOpen, permissions: ["rooms:manage"] },
-      { href: "/settings/security", label: "Security & 2FA", icon: ShieldCheck },
-      { href: "/settings/audit-logs", label: "Audit Logs", icon: ClipboardList, permissions: ["audit_logs:view"] },
-    ],
-  },
+// Items clinics use every day
+const primaryItems: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/appointments", label: "Appointments", icon: ClipboardList, permissions: ["appointments:view_all", "appointments:manage"] },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays, permissions: ["appointments:view_all", "appointments:view_assigned"] },
+  { href: "/appointments/waitlist", label: "Waitlist", icon: ClipboardList, permissions: ["appointments:manage"] },
+  { href: "/queue", label: "Queue", icon: Ticket, permissions: ["queue:view"] },
+  { href: "/patients", label: "Patients", icon: Users, permissions: ["patients:view"] },
+  { href: "/invoices", label: "Invoices", icon: Receipt, permissions: ["invoices:view"] },
+  { href: "/reports", label: "Reports", icon: LineChart, permissions: ["billing:view"] },
+];
+
+// Shown only when AI feature is on — conversations only; config moves to Settings
+const aiItems: NavItem[] = [
+  { href: "/ai/conversations", label: "AI Conversations", icon: Bot, permissions: ["ai:view"], requiresAi: true },
+];
+
+// Everything else — practice setup, admin, finance, AI config
+const settingsItems: NavItem[] = [
+  // Practice
+  { href: "/services", label: "Services", icon: Stethoscope, permissions: ["services:view"] },
+  { href: "/doctors", label: "Doctors", icon: UserCog, permissions: ["doctors:view"] },
+  { href: "/availability", label: "Availability", icon: CalendarDays, permissions: ["availability:view"] },
+  { href: "/settings/rooms", label: "Rooms", icon: DoorOpen, permissions: ["rooms:manage"] },
+  { href: "/forms", label: "Intake Forms", icon: ClipboardCheck, permissions: ["forms:view"] },
+  { href: "/packages", label: "Packages", icon: Package, permissions: ["packages:view"] },
+  { href: "/appointments/recurring", label: "Recurring Appointments", icon: RefreshCw, permissions: ["appointments:manage"] },
+  // Finance
+  { href: "/billing", label: "Billing & Plans", icon: CreditCard, permissions: ["billing:view"] },
+  { href: "/billing/payments", label: "Payments", icon: Wallet, permissions: ["billing:view"] },
+  { href: "/settings/invoice-templates", label: "Invoice Templates", icon: FileText, permissions: ["invoices:manage"] },
+  // Clinic admin
+  { href: "/settings/clinic", label: "Clinic Profile", icon: Settings, permissions: ["clinic_settings:update"] },
+  { href: "/settings/users", label: "Users & Roles", icon: Users, permissions: ["team:view"] },
+  { href: "/settings/notifications", label: "Notifications", icon: Bell, permissions: ["clinic_settings:update"] },
+  { href: "/settings/security", label: "Security & 2FA", icon: ShieldCheck },
+  { href: "/settings/audit-logs", label: "Audit Logs", icon: ClipboardList, permissions: ["audit_logs:view"] },
+  // AI config
+  { href: "/ai/settings", label: "AI Settings", icon: Sparkles, permissions: ["ai:manage"], requiresAi: true },
+  { href: "/ai/faq", label: "FAQ Knowledge Base", icon: Sparkles, permissions: ["ai:manage"], requiresAi: true },
+  { href: "/ai/widget", label: "Widget & Embed", icon: Bot, permissions: ["ai:manage"], requiresAi: true },
+];
+
+// Paths that belong to the settings group — used to auto-expand the drawer
+const SETTINGS_PREFIXES = [
+  "/services", "/doctors", "/availability", "/settings", "/forms",
+  "/packages", "/billing", "/ai/settings", "/ai/faq", "/ai/widget",
+  "/appointments/recurring",
 ];
 
 function canSeeItem(item: NavItem, role: UserRole | null, aiEnabled: boolean): boolean {
@@ -99,6 +88,10 @@ function canSeeItem(item: NavItem, role: UserRole | null, aiEnabled: boolean): b
   if (!item.permissions) return true;
   if (!role) return false;
   return item.permissions.some((p) => hasPermission(role, p));
+}
+
+function isSettingsPath(pathname: string): boolean {
+  return SETTINGS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 function clinicInitials(name: string) {
@@ -375,9 +368,11 @@ function NotificationBell({ notifications }: { notifications: NotificationItem[]
 function SidebarBottom({
   profile,
   notifications,
+  clinicSlug,
 }: {
   profile: Profile | null;
   notifications: NotificationItem[];
+  clinicSlug?: string | null;
 }) {
   const initials = getInitials(profile?.full_name);
   const roleName = profile?.role
@@ -408,6 +403,18 @@ function SidebarBottom({
               <p className="truncate text-xs text-slate-500">{roleName}</p>
             </div>
             <div className="my-1 h-px bg-border" />
+            {clinicSlug && (
+              <a
+                href={`/${clinicSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                <Globe className="h-4 w-4" />
+                Public Website
+                <ExternalLink className="ml-auto h-3 w-3 text-slate-400" />
+              </a>
+            )}
             <form action={logoutAction}>
               <button
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
@@ -431,7 +438,7 @@ function SidebarBottom({
 export type SidebarProps = {
   role: UserRole | null;
   aiEnabled: boolean;
-  clinicBrand?: { name: string; logo_url: string | null } | null;
+  clinicBrand?: { name: string; logo_url: string | null; slug: string } | null;
   profile: Profile | null;
   notifications: NotificationItem[];
 };
@@ -439,13 +446,42 @@ export type SidebarProps = {
 export function Sidebar({ role, aiEnabled, clinicBrand, profile, notifications }: SidebarProps) {
   const pathname = usePathname();
   const brandName = clinicBrand?.name ?? "Book Clinic PH";
+  const [settingsOpen, setSettingsOpen] = useState(() => isSettingsPath(pathname));
 
-  const searchableItems: SearchableItem[] = sections.flatMap((section) => {
-    if (section.requiresAi && !aiEnabled) return [];
-    return section.items
-      .filter((item) => canSeeItem(item, role, aiEnabled))
-      .map((item) => ({ href: item.href, label: item.label, icon: item.icon, section: section.label }));
-  });
+  // Keep settings open when navigating within settings pages
+  useEffect(() => {
+    if (isSettingsPath(pathname)) setSettingsOpen(true);
+  }, [pathname]);
+
+  const visiblePrimary = primaryItems.filter((item) => canSeeItem(item, role, aiEnabled));
+  const visibleAi = aiItems.filter((item) => canSeeItem(item, role, aiEnabled));
+  const visibleSettings = settingsItems.filter((item) => canSeeItem(item, role, aiEnabled));
+
+  const searchableItems: SearchableItem[] = [
+    ...visiblePrimary.map((item) => ({ ...item, section: "Clinic" })),
+    ...visibleAi.map((item) => ({ ...item, section: "AI Assistant" })),
+    ...visibleSettings.map((item) => ({ ...item, section: "Settings" })),
+  ];
+
+  function NavLink({ item }: { item: NavItem }) {
+    const active =
+      pathname === item.href ||
+      (item.href !== "/dashboard" && pathname.startsWith(item.href));
+    const Icon = item.icon;
+    return (
+      <Link
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950",
+          active && "bg-blue-50 text-blue-700"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {item.label}
+      </Link>
+    );
+  }
 
   return (
     <aside className="flex h-full flex-col">
@@ -472,7 +508,7 @@ export function Sidebar({ role, aiEnabled, clinicBrand, profile, notifications }
         </Link>
       </div>
 
-      {/* Fixed search — not inside the scrollable section */}
+      {/* Fixed search */}
       <div className="relative shrink-0 border-b border-border">
         <SidebarSearch items={searchableItems} />
       </div>
@@ -480,49 +516,57 @@ export function Sidebar({ role, aiEnabled, clinicBrand, profile, notifications }
       {/* Scrollable nav */}
       <div className="flex-1 overflow-y-auto">
         <nav className="px-3 py-3">
-          <div className="space-y-4">
-            {sections.map((section) => {
-              if (section.requiresAi && !aiEnabled) return null;
-              const visibleItems = section.items.filter((item) => canSeeItem(item, role, aiEnabled));
-              if (visibleItems.length === 0) return null;
-
-              return (
-                <div key={section.label}>
-                  <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    {section.label}
-                  </p>
-                  <div className="space-y-0.5">
-                    {visibleItems.map((item) => {
-                      const active =
-                        pathname === item.href ||
-                        (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                      const Icon = item.icon;
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          aria-current={active ? "page" : undefined}
-                          className={cn(
-                            "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950",
-                            active && "bg-blue-50 text-blue-700"
-                          )}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-0.5">
+            {visiblePrimary.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
           </div>
+
+          {/* AI Conversations — only when AI is enabled */}
+          {visibleAi.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                AI Assistant
+              </p>
+              <div className="space-y-0.5">
+                {visibleAi.map((item) => (
+                  <NavLink key={item.href} item={item} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Settings — collapsible group */}
+          {visibleSettings.length > 0 && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((o) => !o)}
+                className="mb-1 flex w-full items-center justify-between rounded-lg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 transition-colors hover:text-slate-600"
+              >
+                <span>Settings</span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform duration-200",
+                    settingsOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {settingsOpen && (
+                <div className="space-y-0.5">
+                  {visibleSettings.map((item) => (
+                    <NavLink key={item.href} item={item} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
       </div>
 
       {/* Fixed bottom: account + notifications */}
-      <SidebarBottom profile={profile} notifications={notifications} />
+      <SidebarBottom profile={profile} notifications={notifications} clinicSlug={clinicBrand?.slug} />
     </aside>
   );
 }

@@ -74,7 +74,10 @@ export type SendAppointmentEmailParams = {
 };
 
 export async function sendAppointmentEmail(params: SendAppointmentEmailParams): Promise<void> {
-  if (!isNotificationEnabled(params.type, params.clinicSettings)) return;
+  if (!isNotificationEnabled(params.type, params.clinicSettings)) {
+    console.log(`[email] ${params.type} disabled for clinic ${params.clinicId} — skipped.`);
+    return;
+  }
 
   const formattedStart = formatManilaDateTime(params.startAt);
   const smsData = {
@@ -166,6 +169,7 @@ export async function sendAppointmentEmail(params: SendAppointmentEmailParams): 
     .select("id")
     .single<{ id: string }>();
 
+  console.log(`[email] Sending ${params.type} to ${params.patientEmail} for appointment ${params.appointmentId}`);
   const sendResult = await sendResendEmail({
     to: params.patientEmail,
     subject: emailContent.subject,
@@ -173,6 +177,12 @@ export async function sendAppointmentEmail(params: SendAppointmentEmailParams): 
     replyTo: params.clinic.email ?? undefined,
     fromName: params.clinic.name ?? undefined
   });
+
+  if (sendResult.success) {
+    console.log(`[email] Sent ${params.type} to ${params.patientEmail} (messageId: ${sendResult.messageId})`);
+  } else {
+    console.error(`[email] FAILED to send ${params.type} to ${params.patientEmail}: ${sendResult.error}`);
+  }
 
   if (notifRecord?.id) {
     await supabase

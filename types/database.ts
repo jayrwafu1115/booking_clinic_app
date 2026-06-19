@@ -72,6 +72,10 @@ export type ClinicSettings = {
   reminder_hours_before: number;
   sms_enabled: boolean;
   sms_provider: SmsProviderOption | null;
+  invoice_template: "classic" | "modern" | "minimal";
+  invoice_accent_color: string | null;
+  invoice_header_note: string | null;
+  invoice_footer_note: string | null;
   created_at: string;
   updated_at: string;
 };

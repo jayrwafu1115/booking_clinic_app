@@ -1,41 +1,13 @@
 import Link from "next/link";
-import { ChevronRight, FileText, Plus, Search } from "lucide-react";
+import { FileText, Plus, Search } from "lucide-react";
 import { EmptyState } from "@/components/core/empty-state";
 import { ModuleHeader } from "@/components/core/module-header";
 import { AccessCard } from "@/components/settings/access-card";
 import { Button } from "@/components/ui/button";
+import { InvoicesTable } from "@/components/invoices/invoices-table";
 import { getInvoicesData } from "@/server/queries/invoices";
-import { formatManilaDate } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_BADGE: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  sent:  "bg-blue-50 text-blue-700",
-  paid:  "bg-green-50 text-green-700",
-  void:  "bg-red-50 text-red-500",
-};
-
-function php(centavos: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 0,
-  }).format(centavos / 100);
-}
-
-function pageHref(
-  page: number,
-  filters: { q: string; status: string; dateFrom: string; dateTo: string },
-) {
-  const params = new URLSearchParams();
-  if (filters.q)        params.set("q",        filters.q);
-  if (filters.status)   params.set("status",   filters.status);
-  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
-  if (filters.dateTo)   params.set("dateTo",   filters.dateTo);
-  params.set("page", String(page));
-  return `/invoices?${params.toString()}`;
-}
 
 export default async function InvoicesPage({
   searchParams,
@@ -140,91 +112,14 @@ export default async function InvoicesPage({
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-white">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-border bg-slate-50/60">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Invoice
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Patient
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Total
-                  </th>
-                  <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 sm:table-cell">
-                    Date
-                  </th>
-                  <th className="w-8 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {data.invoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="group border-b border-border last:border-0 transition-colors hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3.5 font-mono text-xs font-medium tabular-nums text-slate-800">
-                      {inv.invoice_number}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-700">
-                      {inv.patients?.full_name ?? <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[inv.status] ?? "bg-slate-100 text-slate-600"}`}
-                      >
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-medium tabular-nums text-slate-900">
-                      {php(inv.total_centavos)}
-                    </td>
-                    <td className="hidden px-4 py-3.5 tabular-nums text-slate-500 sm:table-cell">
-                      {formatManilaDate(inv.created_at)}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <Link href={`/invoices/${inv.id}`}>
-                        <ChevronRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-slate-500" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex items-center justify-between border-t border-border bg-slate-50/40 px-4 py-2.5">
-            <p className="text-xs text-slate-400">
-              Page {data.page} of {data.totalPages} · {data.total.toLocaleString()} invoices
-            </p>
-            <div className="flex items-center gap-1">
-              {data.page <= 1 ? (
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled>
-                  ‹
-                </Button>
-              ) : (
-                <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0">
-                  <Link href={pageHref(data.page - 1, filters)}>‹</Link>
-                </Button>
-              )}
-              {data.page >= data.totalPages ? (
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled>
-                  ›
-                </Button>
-              ) : (
-                <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0">
-                  <Link href={pageHref(data.page + 1, filters)}>›</Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
+        <InvoicesTable
+          invoices={data.invoices}
+          page={data.page}
+          totalPages={data.totalPages}
+          total={data.total}
+          canManage={data.canManage}
+          filters={filters}
+        />
       )}
     </div>
   );
