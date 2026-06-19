@@ -16,7 +16,7 @@ export function Topbar({
   profile: Profile | null;
   notifications: NotificationItem[];
   aiEnabled: boolean;
-  clinicBrand?: { name: string; logo_url: string | null } | null;
+  clinicBrand?: { name: string; logo_url: string | null; slug: string } | null;
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-white px-4 lg:hidden print:hidden">

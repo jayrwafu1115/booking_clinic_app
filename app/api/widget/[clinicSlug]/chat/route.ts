@@ -1,6 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ZodError } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { handleWidgetChat, WidgetChatError, widgetClinicSlugSchema } from "@/server/widget/chat";
+
+const FIELD_LABELS: Record<string, string> = {
+  "patient.fullName": "Full name",
+  "patient.phone": "Phone number",
+  "patient.email": "Email address",
+  "patient.dateOfBirth": "Date of birth",
+  "patient.insuranceProvider": "Insurance provider",
+  "patient.notes": "Notes",
+  serviceId: "Service",
+  startAt: "Appointment time",
+};
+
+function friendlyZodMessage(error: ZodError): string {
+  const messages = error.issues.map((issue) => {
+    const field = FIELD_LABELS[issue.path.join(".")] ?? issue.path.join(" › ");
+    switch (issue.code) {
+      case "too_small":
+        return `${field} must be at least ${issue.minimum} character${issue.minimum === 1 ? "" : "s"}.`;
+      case "too_big":
+        return `${field} must be no more than ${(issue as { maximum: number }).maximum} characters.`;
+      case "invalid_type":
+        return `${field} is required.`;
+      case "invalid_string":
+        return `${field} is not valid.`;
+      default:
+        return field ? `${field}: ${issue.message}` : issue.message;
+    }
+  });
+  return messages.join(" ");
+}
 
 export const runtime = "nodejs";
 
@@ -58,20 +89,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error instanceof WidgetChatError) {
       return NextResponse.json(
         { error: error.message },
-        {
-          status: error.status,
-          headers: rateLimitHeaders(rateLimit)
-        }
+        { status: error.status, headers: rateLimitHeaders(rateLimit) }
+      );
+    }
+
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: friendlyZodMessage(error) },
+        { status: 400, headers: rateLimitHeaders(rateLimit) }
       );
     }
 
     console.error("Widget chat error", error);
     return NextResponse.json(
       { error: "The booking assistant could not respond right now." },
-      {
-        status: 500,
-        headers: rateLimitHeaders(rateLimit)
-      }
+      { status: 500, headers: rateLimitHeaders(rateLimit) }
     );
   }
 }

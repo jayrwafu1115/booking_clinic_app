@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Download, Plus, Search, UserRound } from "lucide-react";
@@ -38,6 +38,20 @@ export function PatientsClient({ data }: { data: PaginatedPatients }) {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPatient, setDrawerPatient] = useState<Patient | undefined>(undefined);
+  const [searchValue, setSearchValue] = useState(data.query);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    setSearchValue(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (value.trim()) params.set("q", value.trim());
+      params.set("page", "1");
+      router.replace(`/patients?${params.toString()}`);
+    }, 350);
+  }
 
   const visiblePatients =
     activeTab === "all" ? data.patients : data.patients.filter((p) => p.status === activeTab);
@@ -101,10 +115,15 @@ export function PatientsClient({ data }: { data: PaginatedPatients }) {
 
       {/* Toolbar: Search + Export */}
       <div className="flex items-center justify-between gap-3">
-        <form className="relative flex-1 max-w-sm" method="get">
+        <div className="relative flex-1 max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input className="pl-9" name="q" defaultValue={data.query} placeholder="Search name, phone, or email…" />
-        </form>
+          <Input
+            className="pl-9"
+            value={searchValue}
+            onChange={handleSearchChange}
+            placeholder="Search name, phone, or email…"
+          />
+        </div>
         {data.canManage && (
           <Button asChild variant="outline" size="sm" className="gap-2 flex-shrink-0">
             <a href="/api/export/patients" download>

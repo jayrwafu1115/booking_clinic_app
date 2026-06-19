@@ -150,7 +150,10 @@ export const widgetChatRequestSchema = z.discriminatedUnion("type", [
     patient: z.object({
       fullName: z.string().trim().min(2).max(160),
       phone: z.string().trim().min(6).max(40),
-      email: z.string().trim().email().optional().or(z.literal("")).transform((value) => value || null)
+      email: z.string().trim().email().optional().or(z.literal("")).transform((value) => value || null),
+      dateOfBirth: z.string().trim().nullish(),
+      insuranceProvider: z.string().trim().max(120).nullish().transform((v) => v || null),
+      notes: z.string().trim().max(500).nullish().transform((v) => v || null)
     })
   })
 ]);
@@ -524,7 +527,11 @@ async function getPublicAvailableSlots(
   return slots.sort((left, right) => left.startAt.localeCompare(right.startAt)).slice(0, limit);
 }
 
-async function createPatientIfNeeded(supabase: SupabaseAdminClient, clinicId: string, patientInfo: { fullName: string; phone: string; email: string | null }) {
+async function createPatientIfNeeded(
+  supabase: SupabaseAdminClient,
+  clinicId: string,
+  patientInfo: { fullName: string; phone: string; email: string | null; dateOfBirth?: string | null; insuranceProvider?: string | null }
+) {
   const phone = patientInfo.phone.trim();
   const { data: existing, error: existingError } = await supabase
     .from("patients")
@@ -538,11 +545,13 @@ async function createPatientIfNeeded(supabase: SupabaseAdminClient, clinicId: st
   }
 
   if (existing) {
-    // Update email if the patient provides one and the record doesn't have one yet
-    if (patientInfo.email && !existing.email) {
+    const updates: Record<string, unknown> = {};
+    if (patientInfo.email && !existing.email) updates.email = patientInfo.email;
+    if (patientInfo.dateOfBirth && !existing.birth_date) updates.birth_date = patientInfo.dateOfBirth;
+    if (Object.keys(updates).length > 0) {
       const { data: updated } = await supabase
         .from("patients")
-        .update({ email: patientInfo.email })
+        .update(updates)
         .eq("id", existing.id)
         .eq("clinic_id", clinicId)
         .select("*")
@@ -558,7 +567,8 @@ async function createPatientIfNeeded(supabase: SupabaseAdminClient, clinicId: st
       clinic_id: clinicId,
       full_name: patientInfo.fullName.trim(),
       phone,
-      email: patientInfo.email
+      email: patientInfo.email,
+      birth_date: patientInfo.dateOfBirth ?? null
     })
     .select("*")
     .single<Patient>();
@@ -609,6 +619,12 @@ async function createWidgetAppointment(
   }
 
   const patient = await createPatientIfNeeded(supabase, config.clinic.id, request.patient);
+
+  const noteParts: string[] = [];
+  if (request.patient.insuranceProvider) noteParts.push(`Insurance: ${request.patient.insuranceProvider}`);
+  if (request.patient.notes) noteParts.push(request.patient.notes);
+  noteParts.push(`Booked via widget. Conversation: ${conversation.id}`);
+
   const { data: appointment, error } = await supabase
     .from("appointments")
     .insert({
@@ -620,7 +636,7 @@ async function createWidgetAppointment(
       source: "widget",
       start_at: matchingSlot.startAt,
       end_at: matchingSlot.endAt,
-      notes: `Created by embeddable AI booking widget. Conversation: ${conversation.id}`
+      notes: noteParts.join("\n")
     })
     .select("*")
     .single<Appointment>();

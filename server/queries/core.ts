@@ -7,6 +7,7 @@ import type { AppointmentWithRelations, AvailabilityRule, BlockedDate, Doctor, P
 export type ClinicBrand = {
   name: string;
   logo_url: string | null;
+  slug: string;
 };
 
 export const getClinicBrand = cache(async (): Promise<ClinicBrand | null> => {
@@ -16,7 +17,7 @@ export const getClinicBrand = cache(async (): Promise<ClinicBrand | null> => {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("clinics")
-    .select("name, logo_url")
+    .select("name, logo_url, slug")
     .eq("id", profile.clinic_id)
     .maybeSingle<ClinicBrand>();
 
