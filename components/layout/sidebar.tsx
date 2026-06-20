@@ -36,7 +36,6 @@ type SearchableItem = {
 // Items clinics use every day
 const primaryItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/appointments", label: "Appointments", icon: ClipboardList, permissions: ["appointments:view_all", "appointments:manage"] },
   { href: "/calendar", label: "Calendar", icon: CalendarDays, permissions: ["appointments:view_all", "appointments:view_assigned"] },
   { href: "/appointments/waitlist", label: "Waitlist", icon: ClipboardList, permissions: ["appointments:manage"] },
   { href: "/queue", label: "Queue", icon: Ticket, permissions: ["queue:view"] },
