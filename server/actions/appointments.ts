@@ -598,3 +598,123 @@ export async function createRecurringAppointmentsAction(
     return toState(error);
   }
 }
+
+export async function createAppointmentDrawerAction(
+  _: AppointmentActionState,
+  formData: FormData
+): Promise<AppointmentActionState> {
+  try {
+    const parsed = appointmentSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) {
+      return { message: parsed.error.errors[0]?.message ?? "Please review the appointment form." };
+    }
+
+    const { user, clinicId } = await getAppointmentActionContext();
+    const startAt = parseAppointmentStart(parsed.data.startAt);
+    const slot = await validateAppointmentSlot({
+      clinicId,
+      patientId: parsed.data.patientId,
+      doctorId: parsed.data.doctorId,
+      serviceId: parsed.data.serviceId,
+      startAt
+    });
+
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("appointments")
+      .insert({
+        clinic_id: clinicId,
+        patient_id: slot.patient.id,
+        doctor_id: slot.doctor?.id ?? null,
+        service_id: slot.service.id,
+        status: "booked",
+        source: parsed.data.source,
+        start_at: slot.startAt,
+        end_at: slot.endAt,
+        notes: parsed.data.notes,
+        created_by: user.id
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (error || !data) {
+      return { message: error?.message ?? "Could not create appointment." };
+    }
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "appointment.created",
+      entityType: "appointment",
+      entityId: data.id,
+      metadata: { patient: slot.patient.full_name, service: slot.service.name, start_at: slot.startAt }
+    });
+
+    await sendAppointmentEmailById(data.id, "booking_confirmation");
+
+    revalidatePath("/appointments");
+    revalidatePath("/calendar");
+    revalidatePath("/dashboard");
+    return { success: true, message: "Appointment created." };
+  } catch (error) {
+    return toState(error);
+  }
+}
+
+export async function updateAppointmentDrawerAction(
+  _: AppointmentActionState,
+  formData: FormData
+): Promise<AppointmentActionState> {
+  try {
+    const parsed = appointmentSchema.required({ id: true }).safeParse(Object.fromEntries(formData));
+    if (!parsed.success) {
+      return { message: parsed.error.errors[0]?.message ?? "Please review the appointment form." };
+    }
+
+    const { user, clinicId } = await getAppointmentActionContext();
+    const startAt = parseAppointmentStart(parsed.data.startAt);
+    const slot = await validateAppointmentSlot({
+      clinicId,
+      patientId: parsed.data.patientId,
+      doctorId: parsed.data.doctorId,
+      serviceId: parsed.data.serviceId,
+      startAt,
+      excludeAppointmentId: parsed.data.id
+    });
+
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase
+      .from("appointments")
+      .update({
+        patient_id: slot.patient.id,
+        doctor_id: slot.doctor?.id ?? null,
+        service_id: slot.service.id,
+        source: parsed.data.source,
+        start_at: slot.startAt,
+        end_at: slot.endAt,
+        notes: parsed.data.notes
+      })
+      .eq("clinic_id", clinicId)
+      .eq("id", parsed.data.id);
+
+    if (error) {
+      return { message: error.message };
+    }
+
+    await createAuditLog({
+      clinicId,
+      actorId: user.id,
+      action: "appointment.updated",
+      entityType: "appointment",
+      entityId: parsed.data.id,
+      metadata: { patient: slot.patient.full_name, service: slot.service.name, start_at: slot.startAt }
+    });
+
+    revalidatePath("/appointments");
+    revalidatePath("/calendar");
+    revalidatePath("/dashboard");
+    return { success: true, message: "Appointment updated." };
+  } catch (error) {
+    return toState(error);
+  }
+}
